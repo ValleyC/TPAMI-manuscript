@@ -1,5 +1,5 @@
 \documentclass[lettersize,journal]{IEEEtran}
-\usepackage{amsmath,amsfonts}
+\usepackage{amsmath,amsfonts,amssymb}
 \usepackage{algorithmic}
 \usepackage{algorithm}
 \usepackage{array}
@@ -10,608 +10,665 @@
 \usepackage{verbatim}
 \usepackage{graphicx}
 \usepackage{cite}
-\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
-% updated with editorial comments 8/9/2021
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{amsthm}
+
+\newtheorem{proposition}{Proposition}
+
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore equi-vari-ant}
 
 \begin{document}
 
-\title{A Sample Article Using IEEEtran.cls\\ for IEEE Journals and Transactions}
+\title{EDISCO: E(2)-Equivariant Diffusion and Partition Networks for Geometric Combinatorial Optimization}
 
-\author{IEEE Publication Technology,~\IEEEmembership{Staff,~IEEE,}
-        % <-this % stops a space
-\thanks{This paper was produced by the IEEE Publication Technology Group. They are in Piscataway, NJ.}% <-this % stops a space
-\thanks{Manuscript received April 19, 2021; revised August 16, 2021.}}
+\author{Ruogu Chen,~\IEEEmembership{Student Member,~IEEE} and Jie Han,~\IEEEmembership{Senior Member,~IEEE}
+\thanks{R. Chen and J. Han are with the Department of Electrical and Computer Engineering, University of Alberta, Edmonton, AB T6G 1H9, Canada (e-mail: ruogu@ualberta.ca; jhan8@ualberta.ca).}
+\thanks{Manuscript received XXX; revised XXX.}}
 
-% The paper headers
-\markboth{Journal of \LaTeX\ Class Files,~Vol.~14, No.~8, August~2021}%
-{Shell \MakeLowercase{\textit{et al.}}: A Sample Article Using IEEEtran.cls for IEEE Journals}
-
-\IEEEpubid{0000--0000/00\$00.00~\copyright~2021 IEEE}
-% Remember, if you use this you must call \IEEEpubidadjcol in the second
-% column for its text to clear the IEEEpubid mark.
+\markboth{IEEE Transactions on Pattern Analysis and Machine Intelligence}%
+{Chen and Han: EDISCO: E(2)-Equivariant Diffusion and Partition Networks for Geometric Combinatorial Optimization}
 
 \maketitle
 
 \begin{abstract}
-This document describes the most common article elements and how to use the IEEEtran class with \LaTeX \ to produce files that are suitable for submission to the IEEE.  IEEEtran can produce conference, journal, and technical note (correspondence) papers with a suitable choice of class options. 
+Geometric combinatorial optimization problems (GCOPs), such as the Traveling Salesman Problem (TSP) and Capacitated Vehicle Routing Problem (CVRP), possess inherent symmetries under Euclidean transformations including rotations, translations, and reflections. These transformations form the E(2) group. However, existing neural network-based approaches, including recent diffusion-based solvers and partition-based methods for large-scale routing, fail to exploit these geometric symmetries. This paper presents EDISCO, a unified framework that combines E(2)-equivariant graph neural networks with continuous-time categorical diffusion for solving GCOPs at multiple scales. For small-to-medium scale problems, EDISCO employs an equivariant score network that respects geometric transformations while operating on discrete variables, together with a continuous-time diffusion process that enables flexible inference through advanced numerical solvers. For large-scale routing problems, we introduce the E(2)-Equivariant Partition Network that replaces polar-angle-based features in existing methods with purely invariant representations, enabling geometrically consistent problem decomposition. Comprehensive experiments demonstrate that EDISCO achieves state-of-the-art performance across multiple GCOP benchmarks while requiring only 33--50\% of the training data compared to non-equivariant baselines. On out-of-distribution benchmarks, EDISCO exhibits superior generalization, validating the benefits of geometric inductive biases for combinatorial optimization.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Article submission, IEEE, IEEEtran, journal, \LaTeX, paper, template, typesetting.
+Combinatorial optimization, vehicle routing, equivariant neural networks, diffusion models, graph neural networks, geometric deep learning.
 \end{IEEEkeywords}
 
 \section{Introduction}
-\IEEEPARstart{T}{his} file is intended to serve as a ``sample article file''
-for IEEE journal papers produced under \LaTeX\ using
-IEEEtran.cls version 1.8b and later. The most common elements are covered in the simplified and updated instructions in ``New\_IEEEtran\_how-to.pdf''. For less common elements you can refer back to the original ``IEEEtran\_HOWTO.pdf''. It is assumed that the reader has a basic working knowledge of \LaTeX. Those who are new to \LaTeX \ are encouraged to read Tobias Oetiker's ``The Not So Short Introduction to \LaTeX ,'' available at: \url{http://tug.ctan.org/info/lshort/english/lshort.pdf} which provides an overview of working with \LaTeX.
+\label{sec:intro}
 
-\section{The Design, Intent, and \\ Limitations of the Templates}
-The templates are intended to {\bf{approximate the final look and page length of the articles/papers}}. {\bf{They are NOT intended to be the final produced work that is displayed in print or on IEEEXplore\textsuperscript{\textregistered}}}. They will help to give the authors an approximation of the number of pages that will be in the final version. The structure of the \LaTeX\ files, as designed, enable easy conversion to XML for the composition systems used by the IEEE. The XML files are used to produce the final print/IEEEXplore pdf and then converted to HTML for IEEEXplore.
+\IEEEPARstart{G}{eometric} combinatorial optimization problems (GCOPs), including the Traveling Salesman Problem (TSP) and Capacitated Vehicle Routing Problem (CVRP), represent fundamental challenges with diverse applications in logistics, circuit design, and resource allocation. These problems share a critical property: their solutions remain invariant under Euclidean transformations of the input coordinates. Rotating or translating all city locations in a TSP instance does not change the optimal tour structure---only its geometric embedding. This symmetry property, characterized by the E(2) group of rotations, translations, and reflections in two-dimensional space, provides a powerful inductive bias that neural network-based solvers should exploit.
 
-\section{Where to Get \LaTeX \ Help --- User Groups}
-The following online groups are helpful to beginning and experienced \LaTeX\ users. A search through their archives can provide many answers to common questions.
-\begin{list}{}{}
-\item{\url{http://www.latex-community.org/}} 
-\item{\url{https://tex.stackexchange.com/} }
-\end{list}
+Despite decades of research on exact and heuristic solvers~\cite{applegate2006concorde,helsgaun2017extension}, learning-based approaches have recently emerged as promising alternatives due to their potential for rapid inference and generalization~\cite{kool2019attention,joshi2022learning,fu2021generalize}. Recent breakthroughs in diffusion models have opened new directions for solving GCOPs~\cite{sun2023difusco,li2023t2t,zhao2024disco}. DIFUSCO~\cite{sun2023difusco} demonstrated graph-based diffusion for combinatorial optimization, while DISCO~\cite{zhao2024disco} achieved significant speedups through analytical denoising. However, these methods fail to capture the geometric structure of GCOPs. They require massive amounts of training data and depend on computationally expensive optimal solutions for supervision~\cite{kool2019attention,kwon2020pomo}. Furthermore, they face significant memory and computational constraints when scaling to larger problem instances~\cite{bresson2021transformer,fu2021generalize}.
 
-\section{Other Resources}
-See \cite{ref1,ref2,ref3,ref4,ref5} for resources on formatting math into text and additional help in working with \LaTeX .
+The inefficiency of existing approaches stems from their need to learn geometric invariances from scratch. Non-equivariant models attempt to address this issue through data augmentation, but this approach only shifts the problem---they require more training samples and still cannot ensure exact equivariance, especially on out-of-distribution data~\cite{nordenfors2023optimization,esteves2018learning}. In contrast, models that explicitly incorporate geometric structure through equivariant architectures achieve better performance with less training data~\cite{brehmer2024does,satorras2021en}.
 
-\section{Text}
-For some of the remainer of this sample we will use dummy text to fill out paragraphs rather than use live text that may violate a copyright.
+Scaling neural solvers to large problem instances presents additional challenges. For CVRP with hundreds or thousands of customers, end-to-end diffusion or autoregressive approaches become computationally prohibitive. The predominant strategy for large-scale routing is partition-based: decompose the problem into smaller subproblems, solve each independently, and combine the solutions~\cite{ye2024glop,vidal2012hybrid}. GLOP~\cite{ye2024glop} exemplifies this approach, using a neural network to predict a partition heatmap that assigns customers to vehicle routes. However, GLOP's architecture includes polar angle features that explicitly break E(2)-equivariance---a rotated problem instance yields different partition predictions, leading to inconsistent and suboptimal solutions.
 
-Itam, que ipiti sum dem velit la sum et dionet quatibus apitet voloritet audam, qui aliciant voloreicid quaspe volorem ut maximusandit faccum conemporerum aut ellatur, nobis arcimus.
-Fugit odi ut pliquia incitium latum que cusapere perit molupta eaquaeria quod ut optatem poreiur? Quiaerr ovitior suntiant litio bearciur?
+In this paper, we present EDISCO, a unified framework that addresses both the equivariance gap in diffusion-based solvers and the scalability challenge for large-scale GCOPs. Our approach makes three key contributions:
 
-Onseque sequaes rectur autate minullore nusae nestiberum, sum voluptatio. Et ratem sequiam quaspername nos rem repudandae volum consequis nos eium aut as molupta tectum ulparumquam ut maximillesti consequas quas inctia cum volectinusa porrum unt eius cusaest exeritatur? Nias es enist fugit pa vollum reium essusam nist et pa aceaqui quo elibusdandis deligendus que nullaci lloreri bla que sa coreriam explacc atiumquos simolorpore, non prehendunt lam que occum\cite{ref6} si aut aut maximus eliaeruntia dia sequiamenime natem sendae ipidemp orehend uciisi omnienetus most verum, ommolendi omnimus, est, veni aut ipsa volendelist mo conserum volores estisciis recessi nveles ut poressitatur sitiis ex endi diti volum dolupta aut aut odi as eatquo cullabo remquis toreptum et des accus dolende pores sequas dolores tinust quas expel moditae ne sum quiatis nis endipie nihilis etum fugiae audi dia quiasit quibus.
-\IEEEpubidadjcol
-Ibus el et quatemo luptatque doluptaest et pe volent rem ipidusa eribus utem venimolorae dera qui acea quam etur aceruptat.
-Gias anis doluptaspic tem et aliquis alique inctiuntiur?
-
-Sedigent, si aligend elibuscid ut et ium volo tem eictore pellore ritatus ut ut ullatus in con con pere nos ab ium di tem aliqui od magnit repta volectur suntio. Nam isquiante doluptis essit, ut eos suntionsecto debitiur sum ea ipitiis adipit, oditiore, a dolorerempos aut harum ius, atquat.
-
-Rum rem ditinti sciendunti volupiciendi sequiae nonsect oreniatur, volores sition ressimil inus solut ea volum harumqui to see\eqref{deqn_ex1a} mint aut quat eos explis ad quodi debis deliqui aspel earcius.
-
-\begin{equation}
-\label{deqn_ex1a}
-x = \sum_{i=0}^{n} 2{i} Q.
-\end{equation}
-
-Alis nime volorempera perferi sitio denim repudae pre ducilit atatet volecte ssimillorae dolore, ut pel ipsa nonsequiam in re nus maiost et que dolor sunt eturita tibusanis eatent a aut et dio blaudit reptibu scipitem liquia consequodi od unto ipsae. Et enitia vel et experferum quiat harum sa net faccae dolut voloria nem. Bus ut labo. Ita eum repraer rovitia samendit aut et volupta tecupti busant omni quiae porro que nossimodic temquis anto blacita conse nis am, que ereperum eumquam quaescil imenisci quae magnimos recus ilibeaque cum etum iliate prae parumquatemo blaceaquiam quundia dit apienditem rerit re eici quaes eos sinvers pelecabo. Namendignis as exerupit aut magnim ium illabor roratecte plic tem res apiscipsam et vernat untur a deliquaest que non cus eat ea dolupiducim fugiam volum hil ius dolo eaquis sitis aut landesto quo corerest et auditaquas ditae voloribus, qui optaspis exero cusa am, ut plibus.
-
-
-\section{Some Common Elements}
-\subsection{Sections and Subsections}
-Enumeration of section headings is desirable, but not required. When numbered, please be consistent throughout the article, that is, all headings and all levels of section headings in the article should be enumerated. Primary headings are designated with Roman numerals, secondary with capital letters, tertiary with Arabic numbers; and quaternary with lowercase letters. Reference and Acknowledgment headings are unlike all other section headings in text. They are never enumerated. They are simply primary headings without labels, regardless of whether the other headings in the article are enumerated. 
-
-\subsection{Citations to the Bibliography}
-The coding for the citations is made with the \LaTeX\ $\backslash${\tt{cite}} command. 
-This will display as: see \cite{ref1}.
-
-For multiple citations code as follows: {\tt{$\backslash$cite\{ref1,ref2,ref3\}}}
- which will produce \cite{ref1,ref2,ref3}. For reference ranges that are not consecutive code as {\tt{$\backslash$cite\{ref1,ref2,ref3,ref9\}}} which will produce  \cite{ref1,ref2,ref3,ref9}
-
-\subsection{Lists}
-In this section, we will consider three types of lists: simple unnumbered, numbered, and bulleted. There have been many options added to IEEEtran to enhance the creation of lists. If your lists are more complex than those shown below, please refer to the original ``IEEEtran\_HOWTO.pdf'' for additional options.\\
-
-\subsubsection*{\bf A plain  unnumbered list}
-\begin{list}{}{}
-\item{bare\_jrnl.tex}
-\item{bare\_conf.tex}
-\item{bare\_jrnl\_compsoc.tex}
-\item{bare\_conf\_compsoc.tex}
-\item{bare\_jrnl\_comsoc.tex}
-\end{list}
-
-\subsubsection*{\bf A simple numbered list}
 \begin{enumerate}
-\item{bare\_jrnl.tex}
-\item{bare\_conf.tex}
-\item{bare\_jrnl\_compsoc.tex}
-\item{bare\_conf\_compsoc.tex}
-\item{bare\_jrnl\_comsoc.tex}
+\item \textbf{E(2)-Equivariant Continuous-Time Diffusion}: We introduce the first continuous-time discrete diffusion model with built-in geometric equivariance for combinatorial optimization. Our equivariant graph neural network (EGNN) architecture processes node coordinates equivariantly while predicting solution variables invariantly, preserving problem symmetries throughout the diffusion process. The continuous-time formulation enables flexible inference with advanced numerical solvers, achieving significant speedups with improved solution quality compared to discrete-time methods.
+
+\item \textbf{E(2)-Equivariant Partition Network}: For large-scale GCOPs, we develop a novel partition network that maintains strict E(2)-equivariance. Unlike existing methods that use polar angles~\cite{ye2024glop}, our approach employs only geometrically invariant node features, ensuring that the partition predictions are consistent under rotations and translations. This equivariant partition network can be combined with existing solvers for scalable, high-quality solutions.
+
+\item \textbf{Comprehensive Experimental Validation}: We demonstrate EDISCO's effectiveness across multiple GCOPs including TSP (50--10,000 nodes), CVRP (up to 2,000 customers), and ESTP. EDISCO achieves state-of-the-art performance while requiring only 33--50\% of the training data compared to non-equivariant baselines. On out-of-distribution benchmarks with rotated and transformed instances, EDISCO exhibits superior generalization, validating the benefits of geometric inductive biases.
 \end{enumerate}
 
-\subsubsection*{\bf A simple bulleted list}
-\begin{itemize}
-\item{bare\_jrnl.tex}
-\item{bare\_conf.tex}
-\item{bare\_jrnl\_compsoc.tex}
-\item{bare\_conf\_compsoc.tex}
-\item{bare\_jrnl\_comsoc.tex}
-\end{itemize}
+The key insight underlying EDISCO is that E(2)-equivariance provides a fundamental constraint that reduces the effective complexity of the learning problem. By operating on the lower-dimensional quotient space defined by geometric equivalence classes, equivariant models can achieve exponentially better sample complexity than their non-equivariant counterparts~\cite{brehmer2024does}. We prove that this property holds throughout the diffusion process and extends to the partition task, providing theoretical grounding for the empirical improvements.
 
+The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews related work on neural combinatorial optimization, geometric deep learning, and partition-based methods. Section~\ref{sec:method} presents the technical details of EDISCO, including the EGNN architecture, continuous-time diffusion framework, and equivariant partition network. Section~\ref{sec:theory} provides theoretical analysis of equivariance preservation and sample complexity. Section~\ref{sec:experiments} presents comprehensive experimental results across multiple GCOP benchmarks. Section~\ref{sec:conclusion} concludes with discussions and future directions.
 
+% Placeholder for remaining sections
+\section{Related Work}
+\label{sec:related}
 
+\subsection{Neural Combinatorial Optimization}
+Neural network-based approaches for combinatorial optimization have emerged as promising alternatives to classical solvers due to their potential for rapid inference and generalization across problem instances~\cite{kool2019attention,joshi2022learning,fu2021generalize,cappart2023combinatorial}. These approaches can be broadly categorized into autoregressive and non-autoregressive paradigms.
 
+Autoregressive models construct solutions sequentially, with Pointer Networks~\cite{vinyals2015pointer} introducing attention-based sequence-to-sequence learning for TSP. The Attention Model~\cite{kool2019attention} significantly advanced this line by combining transformer architectures with REINFORCE training, while POMO~\cite{kwon2020pomo} improved sample efficiency through symmetry-aware policy optimization. For CVRP, Nazari et al.~\cite{nazari2018reinforcement} extended the attention mechanism to handle demand constraints. Despite their success, autoregressive models require extensive training data and often struggle with generalization to larger or out-of-distribution instances~\cite{joshi2022learning}.
 
-\subsection{Figures}
-Fig. 1 is an example of a floating figure using the graphicx package.
- Note that $\backslash${\tt{label}} must occur AFTER (or within) $\backslash${\tt{caption}}.
- For figures, $\backslash${\tt{caption}} should occur after the $\backslash${\tt{includegraphics}}.
+Non-autoregressive approaches generate complete solutions simultaneously, circumventing the sequential bottleneck. Graph convolutional networks for TSP~\cite{joshi2019efficient} pioneered heatmap-based edge prediction, later refined through knowledge distillation~\cite{bi2022learning} and heavy decoder architectures~\cite{fu2024lehd}. Diffusion models have recently achieved state-of-the-art results: DIFUSCO~\cite{sun2023difusco} demonstrated graph-based diffusion for combinatorial optimization, T2T~\cite{li2023t2t} improved solution quality via gradient-based search during inference, and DISCO~\cite{zhao2024disco} achieved significant speedups through analytically solvable decoupled diffusion. Fast-T2T~\cite{li2024fastt2t} further accelerates diffusion-based solutions through optimization consistency between training and testing. Alternative paradigms include COExpander~\cite{ma2025coexpander}, which interpolates between global prediction and local construction for TSP up to 10K nodes, and UTSP~\cite{min2023utsp}, demonstrating competitive performance with only 0.2\% of typical training data through unsupervised surrogate losses.
 
-\begin{figure}[!t]
+A critical limitation shared by all existing neural solvers is their disregard for the geometric structure inherent to Euclidean optimization problems. These methods treat node coordinates as generic features rather than exploiting the symmetries that arise from the problem's geometric embedding.
+
+\subsection{Geometric Deep Learning and Equivariance}
+Geometric deep learning provides a principled framework for incorporating symmetries into neural network architectures~\cite{bronstein2021geometric}. Equivariant neural networks ensure that outputs transform consistently with symmetric transformations of inputs, reducing the hypothesis space and improving sample complexity~\cite{cohen2016group}. This principle has been successfully applied across domains: SE(3)-Transformers~\cite{fuchs2020se3} and Tensor Field Networks~\cite{thomas2018tensor} for 3D molecular property prediction, and E(n)-equivariant GNNs~\cite{satorras2021en} for molecular dynamics.
+
+For combinatorial optimization, the benefits of geometric equivariance have been demonstrated but remain underexploited. E(2)-equivariant reinforcement learning significantly improves TSP generalization~\cite{ouyang2021generalization}, and geometric GNNs outperform standard architectures for TSP algorithm selection~\cite{song2025geometrically}. Sym-NCO~\cite{kim2022symnco} uses regularization-based symmetry learning but does not achieve exact equivariance. Theoretical analysis confirms that equivariant models can reduce training data requirements by operating on the lower-dimensional quotient space defined by symmetry orbits~\cite{brehmer2024does,nordenfors2023optimization}. Recent work on scaling laws further demonstrates that equivariance benefits persist even at large model and data scales~\cite{brehmer2024does}.
+
+Despite this evidence, most neural combinatorial optimization solvers---including all diffusion-based methods---lack geometric awareness. They rely on data augmentation to approximately learn invariances, which is both sample-inefficient and fails to guarantee equivariance on out-of-distribution instances~\cite{esteves2018learning}. These gaps motivate our approach as the first to integrate exact E(2)-equivariance with diffusion models for geometric combinatorial optimization.
+
+\subsection{Partition-Based Methods for Large-Scale Routing}
+Scaling neural solvers to large problem instances presents fundamental computational challenges. For CVRP with hundreds or thousands of customers, end-to-end approaches become prohibitively expensive due to quadratic attention complexity and memory constraints~\cite{bresson2021transformer,fu2021generalize}. The predominant strategy for large-scale routing is partition-based: decompose the problem into smaller subproblems, solve each independently, and combine the solutions.
+
+Classical partition methods include the sweep algorithm~\cite{vidal2012hybrid}, which assigns customers to routes based on polar angles from the depot, and sector-based decomposition strategies. The Hybrid Genetic Search (HGS)~\cite{vidal2012hybrid} combines genetic algorithms with local search to solve partitioned subproblems efficiently. NeuroLKH~\cite{xin2021neurolkh} learns to guide the Lin-Kernighan-Helsgaun heuristic~\cite{helsgaun2017extension} through neural network-predicted edge scores.
+
+GLOP~\cite{ye2024glop} represents the state-of-the-art neural partition approach, using a graph neural network to predict a heatmap that assigns customers to vehicle routes, followed by learned local revisers for tour improvement. The method achieves real-time solutions for CVRP instances with thousands of customers. However, GLOP's architecture relies on polar angle features $\theta = \arctan(y/x)$ for node representation, which explicitly breaks E(2)-equivariance---rotating the problem instance changes the feature values, potentially leading to different partition predictions.
+
+This limitation motivates our E(2)-equivariant partition network, which replaces angle-dependent features with purely invariant representations. By ensuring that the partition prediction is consistent under geometric transformations, our approach achieves more robust decomposition and improved solution quality, particularly on out-of-distribution instances where equivariance provides stronger generalization guarantees.
+
+\subsection{Continuous-Time Diffusion and Numerical Integration}
+Continuous-time formulations resolve fundamental limitations of discrete-time diffusion models. The extension to continuous-time Markov chains (CTMCs) for discrete diffusion~\cite{campbell2022continuous} enables analytical transition probabilities and flexible inference without retraining. Score-based continuous-time discrete diffusion~\cite{sun2023scorebased} provides better convergence properties through the connection to stochastic differential equations~\cite{song2021scorebased}.
+
+A key advantage of continuous-time formulations is the ability to leverage advanced numerical integration methods. Higher-order ODE solvers such as PNDM~\cite{liu2022pndm}, DEIS~\cite{zhang2022deis}, and DPM-Solver~\cite{lu2022dpm,lu2022dpmpp} significantly reduce the number of neural network evaluations required for high-quality samples. The design space of diffusion models~\cite{karras2022edm} further illuminates how noise schedules and sampling strategies affect generation quality.
+
+For combinatorial optimization, continuous-time diffusion offers additional benefits. DiffUCO~\cite{sanokowski2024diffusion} applies continuous-time diffusion to unsupervised optimization on graph problems including maximum independent set and max-cut, demonstrating the framework's flexibility. DISCO~\cite{zhao2024disco} achieves fast inference through analytically solvable decoupled diffusion, bypassing numerical integration entirely. However, this analytical approach requires problem-specific constraints and sacrifices flexibility.
+
+Our approach bridges these paradigms by combining continuous-time categorical diffusion with E(2)-equivariant score networks. This enables both flexible numerical integration with arbitrary ODE solvers and principled exploitation of geometric structure---capabilities that no existing method provides simultaneously.
+
+\section{Preliminaries}
+\label{sec:prelim}
+
+\subsection{Problem Formulation}
+Geometric combinatorial optimization problems (GCOPs) in Euclidean space are defined on a set of $n$ nodes $\mathcal{V}$ with coordinates $\{\mathbf{c}_i\}_{i=1}^n$, $\mathbf{c}_i \in \mathbb{R}^d$. The objective is to find a configuration represented by a decision matrix $\mathbf{X}$ that minimizes a distance-based cost function while satisfying problem-specific constraints:
+\begin{equation}
+    \mathbf{X}^* = \arg\min_{\mathbf{X}} f(\mathbf{X}, \{\mathbf{c}_i\}_{i=1}^n) \quad \text{s.t. } \mathbf{X} \in \mathcal{C}
+\end{equation}
+where $f$ is a distance-based cost function and $\mathcal{C}$ represents the feasibility constraints.
+
+\paragraph{Traveling Salesman Problem (TSP)} Given $n$ cities with coordinates $\mathbf{c}_i \in \mathbb{R}^2$, we seek a binary adjacency matrix $\mathbf{X} \in \{0,1\}^{n \times n}$ where $X_{ij} = 1$ if edge $(i,j)$ is included in the tour. The constraints require each city to have degree exactly 2, with selected edges forming a connected Hamiltonian cycle. The objective is to minimize the total tour length $\sum_{i,j} X_{ij} \|\mathbf{c}_i - \mathbf{c}_j\|_2$.
+
+\paragraph{Capacitated Vehicle Routing Problem (CVRP)} Given a depot at $\mathbf{c}_0$ and $n$ customers with coordinates $\{\mathbf{c}_i\}_{i=1}^n$ and demands $\{d_i\}_{i=1}^n$, the goal is to find a set of routes that visit all customers exactly once, with each route starting and ending at the depot, and the total demand on each route not exceeding vehicle capacity $Q$. The objective minimizes total travel distance across all routes.
+
+For both problems, we formulate the solution as a generative modeling problem~\cite{sun2023difusco,li2023t2t}, learning the conditional distribution $p(\mathbf{X}|\{\mathbf{c}_i\}_{i=1}^n)$ of optimal solutions given instance coordinates.
+
+\subsection{E(2) Equivariance}
+The Euclidean group E(2) consists of all distance-preserving transformations in 2D space, including rotations $R \in \mathrm{SO}(2)$, translations $\mathbf{t} \in \mathbb{R}^2$, and reflections. A function $F: X \to Y$ is \emph{E(2)-equivariant} if for any transformation $g \in \mathrm{E}(2)$ and input $\mathbf{x}$:
+\begin{equation}
+    F(g \cdot \mathbf{x}) = \rho_Y(g) \cdot F(\mathbf{x})
+    \label{eq:equivariance}
+\end{equation}
+where $\rho_Y(g)$ is the corresponding transformation on the output space. When $\rho_Y(g) = \text{id}$ for all $g$, the function is \emph{invariant}.
+
+For GCOPs, the optimal solution structure is E(2)-invariant: rotating or translating all coordinates does not change which edges should be selected. This invariance can be exploited through equivariant intermediate representations that transform consistently with inputs while producing invariant outputs~\cite{satorras2021en}. Equivariant architectures reduce the effective hypothesis space by operating on the quotient manifold defined by symmetry orbits, potentially achieving exponentially better sample complexity~\cite{brehmer2024does}.
+
+\subsection{Continuous-Time Markov Chains}
+Discrete diffusion models define a forward process that progressively corrupts clean data $\mathbf{X}_0$ to noise through a continuous-time Markov chain (CTMC)~\cite{campbell2022continuous}. For $K$-state categorical variables, the instantaneous transition rate between states is governed by the rate matrix:
+\begin{equation}
+    \mathbf{Q}(t) = \beta(t) \left(\frac{1}{K}\mathds{1}\mathds{1}^T - \mathbf{I}\right)
+    \label{eq:rate_matrix}
+\end{equation}
+where $\beta(t)$ is a time-dependent noise schedule. The transition probability from time $s$ to $t$ is obtained by solving the Kolmogorov forward equation, yielding the closed-form solution:
+\begin{equation}
+    P_{ij}(t|s) = \frac{1}{K} + \left(\delta_{ij} - \frac{1}{K}\right) \exp\left(-K \int_s^t \beta(u) du\right)
+    \label{eq:transition_prob}
+\end{equation}
+
+This formulation enables exact sampling of noisy states $\mathbf{X}_t$ from clean data $\mathbf{X}_0$ at any time $t$ without simulating intermediate states. The continuous-time framework allows flexible inference with arbitrary numerical solvers and provides better theoretical convergence guarantees compared to discrete-time formulations~\cite{sun2023scorebased}.
+
+\section{Methodology}
+\label{sec:method}
+
+EDISCO addresses geometric combinatorial optimization through two complementary approaches: (1) E(2)-equivariant continuous-time diffusion for direct solution prediction on small-to-medium scale problems, and (2) E(2)-equivariant partition networks for scalable decomposition of large-scale routing problems. Both approaches share a common foundation in equivariant graph neural networks, ensuring geometric consistency across scales.
+
+\subsection{E(2)-Equivariant Graph Neural Network}
+\label{subsec:egnn}
+
+We adapt the E(n)-equivariant graph neural network~\cite{satorras2021en} with crucial modifications for stable training on combinatorial optimization tasks. The architecture maintains three feature types: node features $\mathbf{h}_i$ encoding local information, edge features $\mathbf{e}_{ij}$ representing pairwise relationships, and coordinate embeddings $\mathbf{x}_i$ that evolve during message passing to capture geometric structure. Figure~\ref{fig:egnn-architecture} illustrates the EGNN architecture that maintains E(2)-equivariance throughout the message passing process.
+
+\begin{figure*}[t]
 \centering
-\includegraphics[width=2.5in]{fig1}
-\caption{Simulation results for the network.}
-\label{fig_1}
-\end{figure}
-
-Fig. 2(a) and 2(b) is an example of a double column floating figure using two subfigures.
- (The subfig.sty package must be loaded for this to work.)
- The subfigure $\backslash${\tt{label}} commands are set within each subfloat command,
- and the $\backslash${\tt{label}} for the overall figure must come after $\backslash${\tt{caption}}.
- $\backslash${\tt{hfil}} is used as a separator to get equal spacing.
- The combined width of all the parts of the figure should do not exceed the text width or a line break will occur.
-%
-\begin{figure*}[!t]
-\centering
-\subfloat[]{\includegraphics[width=2.5in]{fig1}%
-\label{fig_first_case}}
-\hfil
-\subfloat[]{\includegraphics[width=2.5in]{fig1}%
-\label{fig_second_case}}
-\caption{Dae. Ad quatur autat ut porepel itemoles dolor autem fuga. Bus quia con nessunti as remo di quatus non perum que nimus. (a) Case I. (b) Case II.}
-\label{fig_sim}
+\includegraphics[width=\textwidth]{graphs/EGNN.pdf}
+\caption{EDISCO's EGNN Architecture Overview. EGNN layers process TSP instances while preserving E(2) equivariance. The network outputs edge probabilities that remain invariant under geometric transformations. The architecture maintains three feature types that evolve through message passing: node features $\mathbf{h}_i$, edge features $\mathbf{e}_{ij}$, and coordinate embeddings $\mathbf{x}_i$.}
+\label{fig:egnn-architecture}
 \end{figure*}
 
-Note that often IEEE papers with multi-part figures do not place the labels within the image itself (using the optional argument to $\backslash${\tt{subfloat}}[]), but instead will
- reference/describe all of them (a), (b), etc., within the main caption.
- Be aware that for subfig.sty to generate the (a), (b), etc., subfigure
- labels, the optional argument to $\backslash${\tt{subfloat}} must be present. If a
- subcaption is not desired, leave its contents blank,
- e.g.,$\backslash${\tt{subfloat}}[].
+\paragraph{Message Computation}
+Messages aggregate information from node pairs and their geometric relationships:
+\begin{equation}
+    \mathbf{m}_{ij}^{(\ell)} = \text{MLP}_m\left([\mathbf{h}_i^{(\ell)}, \mathbf{h}_j^{(\ell)}, \mathbf{e}_{ij}^{(\ell)}, \|\mathbf{x}_i^{(\ell)} - \mathbf{x}_j^{(\ell)}\|_2]\right)
+    \label{eq:message}
+\end{equation}
+The inclusion of pairwise distances as scalar features, which are invariant under E(2), allows geometric reasoning without breaking equivariance.
 
+\paragraph{Coordinate Updates}
+Coordinate updates must preserve equivariance, achieved through the constrained form:
+\begin{equation}
+    \Delta\mathbf{x}_i = \alpha \sum_{j \neq i} w_{ij} \cdot \frac{\mathbf{x}_j^{(\ell)} - \mathbf{x}_i^{(\ell)}}{\|\mathbf{x}_j^{(\ell)} - \mathbf{x}_i^{(\ell)}\|_2 + \epsilon}
+    \label{eq:coord_update}
+\end{equation}
+where the weights $w_{ij} = \tanh(\text{MLP}_c(\mathbf{m}_{ij}^{(\ell)})/\tau)$ control neighbor influence. The temperature $\tau=10$ prevents tanh saturation during early training, and the conservative step size $\alpha=0.1$ is critical for preventing coordinate collapse while enabling useful geometric feature learning. The $\epsilon$ term ensures numerical stability.
 
- 
+\paragraph{Feature Updates}
+Edge features incorporate explicit time conditioning for diffusion:
+\begin{equation}
+    \mathbf{e}_{ij}^{(\ell+1)} = \text{LayerNorm}(\mathbf{e}_{ij}^{(\ell)} + \text{MLP}_e([\mathbf{e}_{ij}^{(\ell)}, \mathbf{m}_{ij}^{(\ell)}]) + \text{MLP}_t(\mathbf{t}_{\text{emb}}))
+    \label{eq:edge_update}
+\end{equation}
+where $\mathbf{t}_{\text{emb}}$ uses sinusoidal encoding~\cite{vaswani2017attention}. Node features aggregate neighbor information with gated attention:
+\begin{equation}
+    \mathbf{h}_i^{(\ell+1)} = \text{LayerNorm}(\mathbf{h}_i^{(\ell)} + \text{MLP}_h([\mathbf{h}_i^{(\ell)}, \sum_{j \neq i} \sigma(\mathbf{m}_{ij}^{(\ell)}) \odot \mathbf{h}_j^{(\ell)}]))
+    \label{eq:node_update}
+\end{equation}
 
-\section{Tables}
-Note that, for IEEE-style tables, the
- $\backslash${\tt{caption}} command should come BEFORE the table. Table captions use title case. Articles (a, an, the), coordinating conjunctions (and, but, for, or, nor), and most short prepositions are lowercase unless they are the first or last word. Table text will default to $\backslash${\tt{footnotesize}} as
- the IEEE normally uses this smaller font for tables.
- The $\backslash${\tt{label}} must come after $\backslash${\tt{caption}} as always.
- 
-\begin{table}[!t]
-\caption{An Example of a Table\label{tab:table1}}
+This architecture maintains exact E(2)-equivariance: coordinate embeddings transform equivariantly under rotations and translations, while the final output predictions (edge probabilities or partition assignments) remain invariant.
+
+\subsection{Continuous-Time Categorical Diffusion}
+\label{subsec:diffusion}
+
+Unlike continuous diffusion models that operate in Euclidean space and require post-hoc quantization, categorical diffusion directly models discrete decisions in their native space~\cite{austin2021structured}. This eliminates quantization errors and ensures the model learns the true discrete distribution. The continuous-time formulation additionally enables exact likelihood computation and flexible inference schedules without retraining~\cite{campbell2022continuous}.
+
+\paragraph{Forward Process}
+Using the rate matrix defined in~\eqref{eq:rate_matrix} with a linear noise schedule $\beta(t) = \beta_{\min} + t(\beta_{\max} - \beta_{\min})$ where $\beta_{\min} = 0.1$ and $\beta_{\max} = 1.5$, we obtain closed-form transition probabilities. For TSP with binary edge selection ($K=2$), the noisy state $\mathbf{X}_t$ can be directly sampled from clean data $\mathbf{X}_0$:
+\begin{equation}
+    P(\mathbf{X}_t = j | \mathbf{X}_0 = i) = \frac{1}{2} + \left(\delta_{ij} - \frac{1}{2}\right) \exp\left(-2 \int_0^t \beta(u) du\right)
+    \label{eq:forward_sampling}
+\end{equation}
+where the integral evaluates analytically to $\beta_{\min}t + \frac{1}{2}(\beta_{\max} - \beta_{\min})t^2$.
+
+\paragraph{Reverse Process}
+The reverse process reconstructs clean data from noise using a learned score network. Using Bayes' rule, the posterior distribution for the reverse transition is:
+\begin{equation}
+    q(\mathbf{X}_{t-\Delta t}|\mathbf{X}_t, \mathbf{X}_0) = \frac{q(\mathbf{X}_t|\mathbf{X}_{t-\Delta t}, \mathbf{X}_0) q(\mathbf{X}_{t-\Delta t}|\mathbf{X}_0)}{q(\mathbf{X}_t|\mathbf{X}_0)}
+    \label{eq:posterior}
+\end{equation}
+
+Since the true $\mathbf{X}_0$ is unknown during inference, we use the EGNN network $s_\theta(\mathbf{X}_t, t, \{\mathbf{c}_i\})$ to predict it. This $x_0$-prediction parameterization is more stable than noise prediction, especially in the low-noise region where reconstruction accuracy is critical~\cite{salimans2022progressive}.
+
+\paragraph{Adaptive Mixing Strategy}
+We employ an adaptive mixing strategy that dynamically balances between diffusion-based transitions and direct model predictions:
+\begin{equation}
+    p_{\text{reverse}} = w(t) \cdot p_{\text{diffusion}} + (1 - w(t)) \cdot p_{\text{predicted}}
+    \label{eq:adaptive_mixing}
+\end{equation}
+where $w(t) = t$ linearly decreases from 1 to 0. Early in the reverse process (large $t$), the noisy state contains little target information, making diffusion dynamics essential for exploration. As $t$ decreases and the signal emerges, direct predictions become increasingly reliable. For very small timesteps where $t < 0.1$ or $|\Delta t| < 0.02$, we switch entirely to deterministic transitions using the argmax of predicted probabilities.
+
+\paragraph{Solver Flexibility}
+The continuous-time formulation allows flexible choice of accelerated numerical solvers without retraining. We evaluate multiple solvers including PNDM~\cite{liu2022pndm}, DEIS~\cite{zhang2022deis}, and DPM-Solver~\cite{lu2022dpm}. Higher-order methods significantly reduce the number of neural network evaluations while maintaining solution quality.
+
+\paragraph{Tour Construction}
+The diffusion model outputs a probability matrix $P \in [0,1]^{n \times n}$ where $P_{ij}$ represents confidence that edge $(i,j)$ belongs to the optimal tour. Following~\cite{sun2023difusco}, we compute edge scores $s_{ij} = (P_{ij} + P_{ji})/d_{ij}$ that balance model predictions with distance-based priors. Greedy construction then builds a feasible tour by processing edges in descending score order, adding an edge only if both vertices have degree less than 2 and the addition does not create a premature subtour. Optional 2-opt local search~\cite{lin1973effective} can be applied for further improvement.
+
+\subsection{E(2)-Equivariant Partition Network for Large-Scale CVRP}
+\label{subsec:partition}
+
+For large-scale CVRP instances with hundreds or thousands of customers, end-to-end diffusion approaches become computationally prohibitive. The partition-based paradigm offers an effective alternative: decompose the problem into smaller subproblems, solve each independently, and combine solutions. However, existing partition methods break E(2)-equivariance, leading to inconsistent predictions under geometric transformations.
+
+\paragraph{Limitation of Existing Approaches}
+GLOP~\cite{ye2024glop}, the state-of-the-art neural partition method, constructs node features as:
+\begin{equation}
+    \mathbf{x}_i = \left[\frac{d_i}{Q}, r_i, \theta_i\right]
+    \label{eq:glop_features}
+\end{equation}
+where $d_i/Q$ is normalized demand, $r_i = \|\mathbf{c}_i - \mathbf{c}_0\|_2$ is distance from depot, and $\theta_i = \arctan\left(\frac{c_{i,y} - c_{0,y}}{c_{i,x} - c_{0,x}}\right)$ is the polar angle. The polar angle feature explicitly breaks E(2)-equivariance: rotating the problem instance changes $\theta_i$ values, potentially leading to different partition predictions for geometrically equivalent problems.
+
+\paragraph{E(2)-Equivariant Node Features}
+Our partition network replaces angle-dependent features with purely invariant representations:
+\begin{equation}
+    \mathbf{x}_i = \left[\frac{d_i}{Q}, \frac{r_i}{r_{\max}}\right]
+    \label{eq:equivariant_features}
+\end{equation}
+where both features---normalized demand and normalized distance from depot---are invariant under rotations and translations. The normalization by $r_{\max} = \max_j \|\mathbf{c}_j - \mathbf{c}_0\|_2$ ensures scale invariance.
+
+\paragraph{E(2)-Equivariant Edge Features}
+Edge features similarly use only invariant quantities:
+\begin{equation}
+    \mathbf{e}_{ij} = \left[\frac{\|\mathbf{c}_i - \mathbf{c}_j\|_2}{d_{\max}}, a_{ij}\right]
+    \label{eq:edge_features}
+\end{equation}
+where $d_{\max}$ is the maximum pairwise distance for normalization, and $a_{ij}$ is an affinity score based on angular similarity in the invariant coordinate frame defined by the depot. Specifically, we compute affinity using the cosine similarity of depot-centered vectors:
+\begin{equation}
+    a_{ij} = \frac{(\mathbf{c}_i - \mathbf{c}_0)^\top (\mathbf{c}_j - \mathbf{c}_0)}{\|\mathbf{c}_i - \mathbf{c}_0\|_2 \|\mathbf{c}_j - \mathbf{c}_0\|_2}
+\end{equation}
+This affinity is invariant under E(2) since inner products between difference vectors are preserved under rotations and translations.
+
+\paragraph{Partition Network Architecture}
+The partition network uses the EGNN architecture from Section~\ref{subsec:egnn} with modifications for the partition task. The network takes the CVRP instance as input and produces a partition heatmap $\mathbf{H} \in [0,1]^{n \times K}$ where $K$ is the number of clusters (routes) and $H_{ik}$ represents the probability that customer $i$ is assigned to cluster $k$. The output layer applies softmax over clusters:
+\begin{equation}
+    H_{ik} = \frac{\exp(\mathbf{w}_k^\top \mathbf{h}_i^{(L)})}{\sum_{j=1}^K \exp(\mathbf{w}_j^\top \mathbf{h}_i^{(L)})}
+\end{equation}
+where $\mathbf{h}_i^{(L)}$ is the final node embedding after $L$ EGNN layers.
+
+\paragraph{Sequential Sampling with Capacity Constraints}
+Given the partition heatmap, we sample cluster assignments sequentially while respecting capacity constraints. Starting from empty routes, each customer is assigned by sampling from the normalized probability distribution over feasible clusters (those with remaining capacity). This greedy sequential sampling naturally handles the capacity constraints while allowing the learned heatmap to guide the assignment.
+
+\paragraph{Integration with Local Solvers}
+After partitioning, each cluster forms a TSP subproblem that can be solved using any TSP solver. For efficiency, we use the nearest neighbor heuristic followed by 2-opt local search. For higher quality, LKH-3~\cite{helsgaun2017extension} can be applied to each subproblem. The partition network can also be combined with learned revisers~\cite{ye2024glop} for further tour improvement.
+
+\paragraph{Training Objective}
+The partition network is trained to minimize the expected total routing distance. Given a CVRP instance, we generate ground-truth cluster assignments using a heuristic solver (e.g., sweep algorithm or HGS~\cite{vidal2012hybrid}), then train the network with cross-entropy loss between predicted probabilities and ground-truth assignments:
+\begin{equation}
+    \mathcal{L} = -\sum_{i=1}^n \sum_{k=1}^K y_{ik} \log H_{ik}
+    \label{eq:partition_loss}
+\end{equation}
+where $y_{ik} = 1$ if customer $i$ is assigned to cluster $k$ in the ground truth.
+
+\section{Theoretical Analysis}
+\label{sec:theory}
+
+We establish theoretical foundations for EDISCO's equivariant approach, analyzing dimensionality reduction through quotient spaces, preservation of equivariance during diffusion, and extension to the partition task.
+
+\subsection{Quotient Space Dimensionality Reduction}
+
+\begin{proposition}
+\label{prop:quotient_dimension}
+Let $X = \mathbb{R}^{2n}$ denote the space of ordered 2D coordinates for $n$ nodes, and let $G = \mathrm{E}(2)$ be the Euclidean transformation group acting on $X$ by simultaneous rotation and translation of all positions. Assume the transformation is free on the dataset (i.e., no non-trivial element $g \in G \setminus \{e\}$ fixes any configuration). Then:
+\begin{enumerate}
+    \item[(i)] The quotient space $X/G$ is a smooth manifold of dimension $2n - 3$.
+    \item[(ii)] Any $G$-equivariant function $F: X \to Y$ factors uniquely through the quotient as $F = \widetilde{F} \circ \pi$, where $\pi: X \to X/G$ is the canonical projection and $\widetilde{F}: X/G \to Y$ is a function on the quotient manifold.
+    \item[(iii)] Learning a $G$-equivariant function is equivalent to learning a function on the $(2n-3)$-dimensional manifold $X/G$ rather than on $\mathbb{R}^{2n}$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}[Proof Sketch]
+The E(2) group has dimension 3 (two for translations, one for rotations). Under the free action assumption, each orbit has dimension exactly 3. By the orbit-stabilizer theorem and smooth manifold theory~\cite{lee2012smooth}, the quotient $X/G$ inherits a smooth manifold structure of dimension $\dim(X) - \dim(G) = 2n - 3$. Part (ii) follows from the universal property of quotient maps, and (iii) is a direct consequence.
+\end{proof}
+
+Although the dimension reduction from $2n$ to $2n-3$ appears modest, its impact on learning is substantial. Equivariance forces the model to operate on the lower-dimensional orbit space, reducing metric entropy and effective hypothesis-class complexity. The sample complexity improvement scales as $(1/\varepsilon)^3$ in covering number bounds, where $\varepsilon$ is the approximation accuracy~\cite{brehmer2024does}.
+
+\subsection{Equivariance Preservation During Diffusion}
+
+\begin{proposition}
+\label{prop:diffusion_equivariance}
+Let $s_\theta: \mathcal{X} \times [0,1] \times \mathbb{R}^{2n} \to \mathcal{X}$ be an E(2)-equivariant score network, where $\mathcal{X}$ is the space of discrete edge configurations and $\mathbb{R}^{2n}$ represents node coordinates. Then the entire diffusion process---including the forward noising, reverse denoising, and final solution prediction---preserves E(2)-equivariance.
+\end{proposition}
+
+\begin{proof}[Proof Sketch]
+The forward process adds noise independently to each edge variable according to~\eqref{eq:transition_prob}, which is independent of node coordinates and thus trivially equivariant. For the reverse process, the key observation is that the transition distribution at each step depends only on the predicted $\hat{\mathbf{X}}_0 = s_\theta(\mathbf{X}_t, t, \{\mathbf{c}_i\})$. Since $s_\theta$ is E(2)-equivariant by construction and the posterior computation~\eqref{eq:posterior} depends only on $\mathbf{X}$ values (not coordinates), the entire reverse process produces identically distributed outputs for geometrically equivalent inputs.
+\end{proof}
+
+This result ensures that EDISCO produces consistent predictions regardless of the coordinate frame in which the problem is presented, eliminating the need for data augmentation during training.
+
+\subsection{Partition Equivariance}
+
+\begin{proposition}
+\label{prop:partition_equivariance}
+The E(2)-equivariant partition network produces identical partition assignments (up to cluster index permutation) for geometrically equivalent CVRP instances.
+\end{proposition}
+
+\begin{proof}[Proof Sketch]
+The partition network uses only E(2)-invariant features: normalized demand $d_i/Q$, normalized depot distance $r_i/r_{\max}$, pairwise distances, and cosine affinities. Since these features are unchanged under E(2) transformations, and the EGNN architecture preserves equivariance, the output heatmap $\mathbf{H}$ is identical for transformed instances. The sequential sampling procedure then produces identical assignments (possibly with different cluster index labels, which is semantically equivalent).
+\end{proof}
+
+This contrasts with GLOP~\cite{ye2024glop}, where polar angle features $\theta_i$ cause different partition predictions for rotated instances. The equivariance of our partition network provides stronger generalization guarantees, particularly for out-of-distribution instances where the geometric orientation differs from training data.
+
+\section{Experiments}
+\label{sec:experiments}
+
+We evaluate EDISCO on three geometric combinatorial optimization problems: TSP (Section~\ref{subsec:tsp_exp}), large-scale CVRP with our partition network (Section~\ref{subsec:cvrp_exp}), and the Euclidean Steiner Tree Problem (Section~\ref{subsec:estp_exp}). All experiments are conducted on NVIDIA A100 GPUs.
+
+\subsection{Traveling Salesman Problem}
+\label{subsec:tsp_exp}
+
+\paragraph{Setup}
+We follow the standard evaluation protocol from~\cite{kool2019attention}. Training instances are generated by sampling $n$ cities uniformly from $[0, 1]^2$. Optimal solutions are computed using Concorde~\cite{applegate2006concorde} for TSP-50/100 and LKH-3~\cite{helsgaun2017extension} for larger instances. EDISCO requires only 33--50\% of the training data compared to baseline methods across all problem scales. For TSP-50/100, we use dense adjacency matrices; for TSP-500 and above, we apply graph sparsification following~\cite{sun2023difusco}.
+
+\paragraph{TSP-50/100 Results}
+Table~\ref{tab:tsp_small} presents comprehensive results on small-scale instances. EDISCO achieves near-optimal performance with 0.01\% gap on TSP-50 and 0.04\% on TSP-100 using 50-step PNDM, substantially outperforming DIFUSCO (0.48\%, 1.01\%), T2T (0.04\%, 0.18\%), Fast T2T (0.02\%, 0.07\%), and BQ-transformer (--\%, 0.35\%). Unlike CADO, which requires both supervised and reinforcement learning, our purely supervised approach reaches comparable accuracy. For applications requiring ultra-fast inference, EDISCO with 5-step DEIS-2 achieves 0.02\% and 0.06\% gaps, showing competitive performance with significantly reduced computation. With 2-opt post-processing, EDISCO achieves optimal solutions (0.00\% gap) on TSP-50 and 0.01\% gap on TSP-100, matching the performance of Fast T2T and CADO while demonstrating that the equivariant architecture generates high-quality initial tours.
+
+\begin{table}[t]
 \centering
-\begin{tabular}{|c||c|}
-\hline
-One & Two\\
-\hline
-Three & Four\\
-\hline
+\caption{Results on TSP-50 and TSP-100. RL: Reinforcement Learning, SL: Supervised Learning, G: Greedy Decoding, BS: Beam Search, 2O: 2-opt Post-processing. Concorde represents the baseline for computing the gap. All results except CADO, Fast T2T, and BQ-NCO variants are taken from~\cite{li2023t2t}. CADO results are from~\cite{yoon2024cado}. Fast T2T results are from~\cite{li2024fastt2t}. BQ-NCO results are from~\cite{drakulic2023bqnco}.}
+\label{tab:tsp_small}
+\adjustbox{max width=\columnwidth}{%
+\begin{tabular}{llcccc}
+\toprule
+\multirow{2}{*}{\textbf{Algorithm}} & \multirow{2}{*}{\textbf{Type}} & \multicolumn{2}{c}{\textbf{TSP-50}} & \multicolumn{2}{c}{\textbf{TSP-100}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6}
+& & Length $\downarrow$ & Gap $\downarrow$ & Length $\downarrow$ & Gap $\downarrow$ \\
+\midrule
+Concorde~\cite{applegate2006concorde} & Exact & 5.69 & 0.00 & 7.76 & 0.00 \\
+2-opt~\cite{lin1973effective} & Heuristic & 5.86 & 2.95 & 8.03 & 3.54 \\
+\midrule
+AM~\cite{kool2019attention} & RL+G & 5.80 & 1.76 & 8.12 & 4.53 \\
+GCN~\cite{joshi2019efficient} & SL+G & 5.87 & 3.10 & 8.41 & 8.38 \\
+Transformer~\cite{bresson2021transformer} & RL+G & 5.71 & 0.31 & 7.88 & 1.42 \\
+POMO~\cite{kwon2020pomo} & RL+G & 5.73 & 0.64 & 7.87 & 1.07 \\
+Sym-NCO~\cite{kim2022symnco} & RL+G & -- & -- & 7.84 & 0.94 \\
+Image Diffusion~\cite{graikos2022diffusion} & SL+G & 5.76 & 1.23 & 7.92 & 2.11 \\
+DIFUSCO~\cite{sun2023difusco} & SL+G & 5.72 & 0.48 & 7.84 & 1.01 \\
+T2T~\cite{li2023t2t} & SL+G & 5.69 & 0.04 & 7.77 & 0.18 \\
+Fast T2T (Ts=5)~\cite{li2024fastt2t} & SL+G & 5.69 & 0.02 & 7.76 & 0.07 \\
+BQ-perceiver~\cite{drakulic2023bqnco} & SL+G & -- & -- & 7.84 & 0.97 \\
+BQ-transformer~\cite{drakulic2023bqnco} & SL+G & -- & -- & 7.79 & 0.35 \\
+CADO~\cite{yoon2024cado} & SL+RL+G & 5.69 & 0.01 & 7.77 & 0.08 \\
+\textbf{EDISCO (50-step PNDM)} & SL+G & \textbf{5.69} & \textbf{0.01} & \textbf{7.76} & \textbf{0.04} \\
+\textbf{EDISCO (5-step DEIS-2)} & SL+G & \textbf{5.69} & \textbf{0.02} & \textbf{7.76} & \textbf{0.06} \\
+\midrule
+AM~\cite{kool2019attention} & RL+G+2O & 5.77 & 1.41 & 8.02 & 3.32 \\
+GCN~\cite{joshi2019efficient} & SL+G+2O & 5.70 & 0.12 & 7.81 & 0.62\\
+Transformer~\cite{bresson2021transformer} & RL+G+2O & 5.70 & 0.16 & 7.85 & 1.19 \\
+POMO~\cite{kwon2020pomo} & RL+G+2O & 5.73 & 0.63 & 7.82 & 0.82 \\
+Sym-NCO~\cite{kim2022symnco} & RL+G+2O & -- & -- & 7.82 & 0.76 \\
+DIFUSCO~\cite{sun2023difusco} & SL+G+2O & 5.69 & 0.09 & 7.78 & 0.22 \\
+T2T~\cite{li2023t2t} & SL+G+2O & 5.69 & 0.02 & 7.76 & 0.06 \\
+Fast T2T (Ts=3,Tg=3)~\cite{li2024fastt2t} & SL+G+2O & 5.69 & 0.01 & 7.76 & 0.03 \\
+BQ-transformer (bs16)~\cite{drakulic2023bqnco} & SL+BS & -- & -- & 7.76 & 0.01 \\
+CADO~\cite{yoon2024cado} & SL+RL+G+2O & 5.69 & 0.00 & 7.76 & 0.01 \\
+\textbf{EDISCO (50-step PNDM)} & SL+G+2O & \textbf{5.69} & \textbf{0.00} & \textbf{7.76} & \textbf{0.01} \\
+\textbf{EDISCO (5-step DEIS-2)} & SL+G+2O & \textbf{5.69} & \textbf{0.01} & \textbf{7.76} & \textbf{0.02} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\paragraph{TSP-500/1000 Results}
+Table~\ref{tab:tsp_large} presents comprehensive results on larger instances across multiple decoding strategies. EDISCO achieves state-of-the-art performance across all settings. Using greedy decoding, EDISCO achieves gaps of 1.95\% and 2.85\% on TSP-500 and TSP-1000, substantially outperforming DIFUSCO (9.41\%, 11.24\%), T2T (5.09\%, 8.87\%), Fast T2T (5.94\%, 6.29\%), and BQ-perceiver (5.22\%, 8.97\%). BQ-NCO methods~\cite{drakulic2023bqnco}, which use an MDP formulation with imitation learning, achieve competitive generalization but are still outperformed by EDISCO's diffusion-based approach. The continuous-time formulation enables flexible speed-quality trade-offs: 5-step DEIS-2 achieves 2.78\% and 4.42\% gaps in only 0.23 and 0.75 minutes, approximately 9$\times$ faster than PNDM-50 while maintaining competitive quality, making it ideal for time-critical applications.
+
+With 2-opt post-processing, EDISCO achieves near-optimal solutions with gaps of 0.18\% and 0.52\%, outperforming Fast T2T (0.39\%, 0.58\%) and CADO (0.24\%, 0.69\%) while being 3.6$\times$ faster on TSP-500 and 2.7$\times$ faster on TSP-1000. The efficiency gain is particularly notable in sampling mode, where EDISCO with sampling and 2-opt achieves state-of-the-art gaps of 0.08\% and 0.22\%, outperforming all baselines including BQ-transformer (0.15\%, 0.35\%) and CADO (0.12\%, 0.30\%). This demonstrates that the continuous-time formulation combined with E(2)-equivariance enables both superior solution quality and faster inference.
+
+\begin{table*}[t]
+\centering
+\caption{Results on TSP-500, TSP-1000, and TSP-10000. RL: Reinforcement Learning, SL: Supervised Learning, AS: Active Search, G: Greedy, S: Sampling, BS: Beam Search, 2O: 2-opt. LKH-3 represents the baseline for computing the gap. All results except CADO, Fast T2T, BQ-NCO variants, and EDISCO are taken from~\cite{li2023t2t}. CADO results are from~\cite{yoon2024cado}. Fast T2T results are from~\cite{li2024fastt2t}. BQ-NCO results are from~\cite{drakulic2023bqnco}. TSP-10000 results from~\cite{sun2023difusco,zhao2024disco,ye2024glop}.}
+\label{tab:tsp_large}
+\adjustbox{max width=\textwidth}{%
+\begin{tabular}{llccccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Algorithm}} & \multirow{2}{*}{\textbf{Type}} & \multicolumn{3}{c}{\textbf{TSP-500}} & \multicolumn{3}{c}{\textbf{TSP-1000}} & \multicolumn{3}{c}{\textbf{TSP-10000}} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8} \cmidrule(lr){9-11}
+& & Length$\downarrow$ & Gap$\downarrow$ & Time & Length$\downarrow$ & Gap$\downarrow$ & Time & Length$\downarrow$ & Gap$\downarrow$ & Time \\
+\midrule
+Concorde~\cite{applegate2006concorde} & Exact & 16.55 & -- & 37.66 m & 23.12 & -- & 6.65 h & -- & -- & -- \\
+Gurobi~\cite{gurobi2023} & Exact & 16.55 & 0.00\% & 45.63 h & -- & -- & -- & -- & -- & -- \\
+LKH-3 (default)~\cite{helsgaun2017extension} & Heuristics & 16.55 & 0.00\% & 46.28 m & 23.12 & 0.00\% & 2.57 h & 71.77 & -- & 8.8 h \\
+\midrule
+AM~\cite{kool2019attention} & RL+G & 20.02 & 20.99\% & 1.51 m & 31.15 & 34.75\% & 3.18 m & 141.51 & 97.17\% & 7.68 m \\
+GCN~\cite{joshi2019efficient} & SL+G & 29.72 & 79.61\% & 6.67 m & 48.62 & 110.29\% & 28.52 m & -- & -- & -- \\
+GLOP~\cite{ye2024glop} & RL+G & -- & -- & -- & -- & -- & -- & 75.29 & 4.90\% & 1.90 m \\
+POMO+EAS-Emb~\cite{kwon2020pomo} & RL+AS+G & 19.24 & 16.25\% & 12.80 h & -- & -- & -- & -- & -- & -- \\
+POMO+EAS-Tab~\cite{kwon2020pomo} & RL+AS+G & 24.54 & 48.22\% & 11.61 h & 49.56 & 114.36\% & 63.45 h & -- & -- & -- \\
+DIMES~\cite{qiu2022dimes} & RL+G & 18.93 & 14.38\% & 0.97 m & 26.58 & 14.97\% & 2.08 m & -- & -- & -- \\
+DIMES~\cite{qiu2022dimes} & RL+AS+G & 17.81 & 7.61\% & 2.10 h & 24.91 & 7.74\% & 4.49 h & 80.45 & 12.09\% & 3.07 h \\
+DIFUSCO~\cite{sun2023difusco} & SL+G & 18.11 & 9.41\% & 5.70 m & 25.72 & 11.24\% & 17.33 m & 78.35 & 8.95\% & 28.51 m \\
+T2T~\cite{li2023t2t} & SL+G & 17.39 & 5.09\% & 4.90 m & 25.17 & 8.87\% & 15.66 m & 73.87 & 2.92\% & 1.52 h \\
+DISCO~\cite{zhao2024disco} & SL+G & -- & -- & -- & -- & -- & -- & 73.85 & 2.90\% & 1.52 h \\
+Fast T2T (Ts=5)~\cite{li2024fastt2t} & SL+G & 17.53 & 5.94\% & 0.37 m & 24.57 & 6.29\% & 1.35 m & -- & -- & -- \\
+BQ-perceiver~\cite{drakulic2023bqnco} & SL+G & 17.41 & 5.22\% & 0.13 m & 25.19 & 8.97\% & 0.37 m & -- & -- & -- \\
+CADO~\cite{yoon2024cado} & SL+RL+G & 16.93 & 2.30\% & 8.23 m & 23.89 & 3.33\% & 18.42 m & -- & -- & -- \\
+\textbf{EDISCO (50-step PNDM)} & SL+G & \textbf{16.87} & \textbf{1.95\%} & 2.19 m & \textbf{23.78} & \textbf{2.85\%} & 6.84 m & \textbf{73.19} & \textbf{1.98\%} & 12.18 m \\
+\textbf{EDISCO (5-step DEIS-2)} & SL+G & \textbf{17.01} & \textbf{2.78\%} & \textbf{0.23 m} & \textbf{24.83} & \textbf{4.42\%} & \textbf{0.75 m} & -- & -- & -- \\
+\midrule
+DIMES~\cite{qiu2022dimes} & RL+G+2O & 17.65 & 6.62\% & 1.01 m & 24.83 & 7.38\% & 2.29 m & -- & -- & -- \\
+DIMES~\cite{qiu2022dimes} & RL+AS+G+2O & 17.31 & 4.57\% & 2.10 h & 24.33 & 5.22\% & 4.49 h & -- & -- & -- \\
+DIFUSCO~\cite{sun2023difusco} & SL+G+2O & 16.81 & 1.55\% & 5.75 m & 23.55 & 1.86\% & 17.52 m & 73.99 & 3.10\% & 35.38 m \\
+T2T~\cite{li2023t2t} & SL+G+2O & 16.68 & 0.78\% & 4.98 m & 23.41 & 1.25\% & 15.90 m & -- & -- & -- \\
+Fast T2T (Ts=5,Tg=5)~\cite{li2024fastt2t} & SL+G+2O & 16.61 & 0.39\% & 2.17 m & 23.25 & 0.58\% & 8.62 m & -- & -- & -- \\
+BQ-transformer~\cite{drakulic2023bqnco} & SL+G & 16.75 & 1.18\% & 0.25 m & 23.65 & 2.29\% & 0.50 m & -- & -- & -- \\
+CADO~\cite{yoon2024cado} & SL+RL+G+2O & 16.59 & 0.24\% & 8.35 m & 23.28 & 0.69\% & 18.67 m & -- & -- & -- \\
+\textbf{EDISCO (50-step PNDM)} & SL+G+2O & \textbf{16.58} & \textbf{0.18\%} & 2.35 m & \textbf{23.24} & \textbf{0.52\%} & 6.97 m & \textbf{72.87} & \textbf{1.53\%} & 12.72 m \\
+\textbf{EDISCO (5-step DEIS-2)} & SL+G+2O & \textbf{16.59} & \textbf{0.26\%} & \textbf{0.40 m} & \textbf{23.31} & \textbf{0.82\%} & \textbf{0.90 m} & -- & -- & -- \\
+\midrule
+EAN~\cite{deudon2018learning} & RL+S+2O & 23.75 & 43.57\% & 57.76 m & 47.73 & 106.46\% & 5.39 h & -- & -- & -- \\
+AM~\cite{kool2019attention} & RL+BS & 19.53 & 18.03\% & 21.99 m & 29.90 & 29.23\% & 1.64 h & -- & -- & -- \\
+GCN~\cite{joshi2019efficient} & SL+BS & 30.37 & 83.55\% & 38.02 m & 51.26 & 121.73\% & 51.67 m & -- & -- & -- \\
+GLOP~\cite{ye2024glop} & RL+S & -- & -- & -- & -- & -- & -- & 75.27 & 4.88\% & 5.96 m \\
+DIMES~\cite{qiu2022dimes} & RL+S & 18.84 & 13.84\% & 1.06 m & 26.36 & 14.01\% & 2.38 m & -- & -- & -- \\
+DIMES~\cite{qiu2022dimes} & RL+AS+S & 17.80 & 7.55\% & 2.11 h & 24.89 & 7.70\% & 4.53 h & -- & -- & -- \\
+DIFUSCO~\cite{sun2023difusco} & SL+S & 17.48 & 5.65\% & 19.02 m & 25.11 & 8.61\% & 59.18 m & 95.52 & 33.09\% & 6.59 h \\
+T2T~\cite{li2023t2t} & SL+S & 17.02 & 2.84\% & 15.98 m & 24.72 & 6.92\% & 53.92 m & 73.81 & 2.84\% & 2.47 h \\
+DISCO~\cite{zhao2024disco} & SL+S & -- & -- & -- & -- & -- & -- & 73.81 & 2.84\% & 48.77 m \\
+Fast T2T (Ts=5)~\cite{li2024fastt2t} & SL+S & 17.02 & 2.85\% & 1.12 m & 24.07 & 4.10\% & 4.65 m & -- & -- & -- \\
+CADO~\cite{yoon2024cado} & SL+RL+S & 16.76 & 1.27\% & 26.89 m & 23.67 & 2.38\% & 61.23 m & -- & -- & -- \\
+\textbf{EDISCO (50-step PNDM)} & SL+S & \textbf{16.72} & \textbf{1.05\%} & 7.82 m & \textbf{23.57} & \textbf{1.95\%} & 23.27 m & \textbf{72.77} & \textbf{1.39\%} & 38.92 m \\
+\textbf{EDISCO (5-step DEIS-2)} & SL+S & \textbf{16.80} & \textbf{1.50\%} & \textbf{0.85 m} & \textbf{23.82} & \textbf{3.02\%} & \textbf{2.58 m} & -- & -- & -- \\
+\midrule
+DIMES~\cite{qiu2022dimes} & RL+S+2O & 17.64 & 6.56\% & 1.10 m & 24.81 & 7.29\% & 2.86 m & -- & -- & -- \\
+DIMES~\cite{qiu2022dimes} & RL+AS+S+2O & 17.29 & 4.48\% & 2.11 h & 24.32 & 5.17\% & 4.53 h & -- & -- & -- \\
+DIFUSCO~\cite{sun2023difusco} & SL+S+2O & 16.69 & 0.83\% & 19.05 m & 23.42 & 1.30\% & 59.53 m & 74.66 & 4.03\% & 6.67 h \\
+T2T~\cite{li2023t2t} & SL+S+2O & 16.61 & 0.37\% & 16.03 m & 23.30 & 0.78\% & 54.67 m & -- & -- & -- \\
+DISCO~\cite{zhao2024disco} & SL+GS+MCTS & -- & -- & -- & -- & -- & -- & 73.69 & 2.68\% & 2.1 h \\
+Fast T2T (Ts=5,Tg=5)~\cite{li2024fastt2t} & SL+S+2O & 16.58 & 0.21\% & 6.85 m & 23.22 & 0.42\% & 18.28 m & -- & -- & -- \\
+BQ-transformer (bs16)~\cite{drakulic2023bqnco} & SL+S+2O & 16.57 & 0.15\% & 18.00 m & 23.20 & 0.35\% & 42.00 m & -- & -- & -- \\
+CADO~\cite{yoon2024cado} & SL+RL+S+2O & 16.57 & 0.12\% & 27.01 m & 23.19 & 0.30\% & 61.48 m & -- & -- & -- \\
+\textbf{EDISCO (50-step PNDM)} & SL+S+2O & \textbf{16.56} & \textbf{0.08\%} & 8.03 m & \textbf{23.17} & \textbf{0.22\%} & 23.48 m & \textbf{72.63} & \textbf{1.20\%} & 39.28 m \\
+\textbf{EDISCO (5-step DEIS-2)} & SL+S+2O & \textbf{16.57} & \textbf{0.12\%} & \textbf{1.00 m} & \textbf{23.20} & \textbf{0.35\%} & \textbf{2.80 m} & -- & -- & -- \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\paragraph{TSP-10000 Results}
+As shown in the rightmost columns of Table~\ref{tab:tsp_large}, EDISCO scales effectively to the challenging TSP-10000 benchmark. With greedy decoding, EDISCO achieves a 1.98\% optimality gap in 12.18 minutes, significantly outperforming DIFUSCO (8.95\%, 28.51m) and surpassing both T2T (2.92\%, 1.52h) and DISCO (2.90\%, 1.52h) while being 7.5$\times$ faster than T2T. With sampling plus 2-opt, EDISCO reaches an exceptional 1.20\% gap in 39.28 minutes, compared to DIFUSCO's 4.03\% in 6.67 hours, representing both a 3.4$\times$ improvement in solution quality and 10$\times$ speedup.
+
+\paragraph{Cross-Distribution Generalization}
+To evaluate EDISCO's robustness to distribution shift, we conduct comprehensive out-of-distribution (OOD) experiments following the protocol established by~\cite{bi2022learning}. We evaluate on four standard OOD distributions: Uniform (in-distribution baseline), Cluster, Explosion, and Implosion. All methods are trained only on uniform datasets.
+
+Table~\ref{tab:ood_results} presents the cross-distribution evaluation results. We report the optimality gap and deterioration metric, defined as $\text{Det}(\%) = (\text{Gap}_{\text{OoD}} / \text{Gap}_{\text{Uniform}} - 1) \times 100$, which measures relative performance degradation on OOD data. EDISCO achieves an average deterioration of only 4.2\%, dramatically outperforming GLOP (15.0\%), DIFUSCO (132.7\%), T2T (687.0\%), and Fast T2T (1960.6\%). The average gap across all distributions is 0.041\% for EDISCO, compared to 0.101\% for GLOP, 1.108\% for T2T, and 2.015\% for DIFUSCO. Figure~\ref{fig:ood_visualization} visualizes EDISCO-generated tours across all four distributions, demonstrating consistent high-quality solutions regardless of the underlying point distribution. This demonstrates that E(2)-equivariance provides strong generalization guarantees, particularly for out-of-distribution instances where geometric orientation differs from training data.
+
+\begin{table*}[t]
+\centering
+\caption{Cross-distribution generalization on TSP-100. All models trained on Uniform distribution only. Det.(\%): Deterioration = (Gap$_{\text{OoD}}$ / Gap$_{\text{Uniform}}$ - 1) $\times$ 100. Results for RL-based baselines from~\cite{bi2022learning}. Diffusion methods evaluated using pretrained checkpoints.}
+\label{tab:ood_results}
+\adjustbox{max width=\textwidth}{%
+\begin{tabular}{lccccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Method}} & \textbf{Uniform} & \multicolumn{2}{c}{\textbf{Cluster}} & \multicolumn{2}{c}{\textbf{Explosion}} & \multicolumn{2}{c}{\textbf{Implosion}} & \multicolumn{2}{c}{\textbf{Average}} \\
+\cmidrule(lr){2-2} \cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10}
+& Gap(\%)$\downarrow$ & Gap(\%)$\downarrow$ & Det.(\%)$\downarrow$ & Gap(\%)$\downarrow$ & Det.(\%)$\downarrow$ & Gap(\%)$\downarrow$ & Det.(\%)$\downarrow$ & Gap(\%)$\downarrow$ & Det.(\%)$\downarrow$ \\
+\midrule
+AM~\cite{kool2019attention} & 2.310 & 17.97 & 678 & 3.817 & 65.2 & 2.431 & 5.2 & 6.632 & 249 \\
+AM+HAC~\cite{bi2022learning} & 2.484 & 3.997 & 60.9 & 3.084 & 24.1 & 2.595 & 4.5 & 3.040 & 29.8 \\
+AMDKD+EAS~\cite{bi2022learning} & 0.078 & 0.165 & 111.5 & 0.048 & -38.5 & 0.079 & 1.3 & 0.092 & 24.8 \\
+\midrule
+DIFUSCO~\cite{sun2023difusco} & 1.01 & 2.87 & 184.2 & 1.38 & 36.6 & 2.80 & 177.2 & 2.015 & 132.7 \\
+T2T~\cite{li2023t2t} & 0.18 & 1.50 & 733.3 & 0.15 & -16.7 & 2.60 & 1344.4 & 1.108 & 687.0 \\
+Fast T2T~\cite{li2024fastt2t} & 0.060 & 1.180 & 1866.7 & \textbf{0.029} & -51.7 & 2.500 & 4066.7 & 0.942 & 1960.6 \\
+GLOP~\cite{ye2024glop} & 0.091 & 0.166 & 82.4 & 0.066 & -27.5 & 0.082 & \textbf{-9.9} & 0.101 & 15.0 \\
+\midrule
+\textbf{EDISCO (50-step PNDM)} & \textbf{0.040} & \textbf{0.050} & \textbf{25.0} & 0.030 & \textbf{-25.0} & \textbf{0.045} & 12.5 & \textbf{0.041} & \textbf{4.2} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{graphs/edisco_ood_tsp.pdf}
+\caption{Visualization of EDISCO-generated tours on four standard OOD distributions for TSP-100: Uniform (in-distribution), Cluster, Explosion, and Implosion. EDISCO produces high-quality tours across all distributions, demonstrating the strong generalization ability conferred by E(2)-equivariance.}
+\label{fig:ood_visualization}
+\end{figure*}
+
+\paragraph{TSPLIB Real-World Instances}
+We evaluate EDISCO on real-world TSP instances from the TSPLIB benchmark~\cite{reinelt1991tsplib}. Following prior work~\cite{fu2021generalize,li2023t2t}, we train EDISCO on randomly generated 100-node TSP instances and evaluate on TSPLIB instances ranging from 50 to 200 nodes. Table~\ref{tab:tsplib} presents optimality gaps across 29 TSPLIB instances. EDISCO achieves the lowest average optimality gap of 0.088\%, representing a 33.8\% relative improvement over T2T (0.133\%). Notably, EDISCO obtains optimal solutions (0.000\% gap) on 6 instances and near-optimal solutions ($<$0.05\% gap) on 19 out of 29 instances. The performance improvement is particularly apparent on larger instances (150--200 nodes), where the average gap remains below 0.15\%.
+
+\begin{table*}[t]
+\centering
+\caption{Solution quality on TSPLIB instances (50--200 nodes). All methods trained on random 100-node problems. Results based on 4$\times$ sampling decoding with 2-opt post-processing. Bold indicates best performance. Results for baselines from~\cite{fu2021generalize,li2023t2t,li2024fastt2t}.}
+\label{tab:tsplib}
+\adjustbox{max width=\textwidth}{%
+\small
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Instance} & \textbf{AM} & \textbf{GCN} & \textbf{Learn2OPT} & \textbf{GNNGLS} & \textbf{DIFUSCO} & \textbf{T2T} & \textbf{Fast T2T} & \textbf{EDISCO} \\
+\midrule
+eil51    & 16.767\% & 40.025\% & 1.725\% & 1.529\% & 0.314\% & 0.314\% & \textbf{0.00\%} & 0.217\% \\
+berlin52 & 4.169\%  & 33.225\% & 0.449\% & 0.142\% & \textbf{0.000\%} & \textbf{0.000\%} & \textbf{0.00\%} & \textbf{0.000\%} \\
+st70     & 1.737\%  & 24.785\% & 0.040\% & 0.764\% & 0.172\% & \textbf{0.000\%} & \textbf{0.00\%} & \textbf{0.000\%} \\
+eil76    & 1.992\%  & 27.411\% & 0.096\% & 0.163\% & 0.217\% & 0.163\% & \textbf{0.00\%} & 0.108\% \\
+pr76     & 0.816\%  & 27.702\% & 1.228\% & 0.039\% & 0.043\% & 0.039\% & \textbf{0.00\%} & 0.024\% \\
+rat99    & 2.645\%  & 17.633\% & 0.123\% & 0.550\% & 0.016\% & \textbf{0.000\%} & \textbf{0.00\%} & \textbf{0.000\%} \\
+kroA100  & 4.017\%  & 28.828\% & 18.313\% & 0.728\% & 0.050\% & \textbf{0.000\%} & \textbf{0.00\%} & \textbf{0.000\%} \\
+kroB100  & 5.142\%  & 34.668\% & 1.119\% & 0.147\% & 0.006\% & \textbf{0.000\%} & 0.65\% & 0.003\% \\
+kroC100  & 0.972\%  & 35.506\% & 0.349\% & 1.571\% & \textbf{0.000\%} & \textbf{0.000\%} & \textbf{0.00\%} & \textbf{0.000\%} \\
+kroD100  & 2.717\%  & 38.018\% & 0.866\% & 0.572\% & \textbf{0.000\%} & \textbf{0.000\%} & \textbf{0.00\%} & 0.002\% \\
+kroE100  & 1.470\%  & 26.568\% & 1.832\% & 0.140\% & \textbf{0.000\%} & \textbf{0.000\%} & \textbf{0.00\%} & \textbf{0.000\%} \\
+rd100    & 3.407\%  & 50.432\% & 1.725\% & 0.003\% & \textbf{0.000\%} & \textbf{0.000\%} & \textbf{0.00\%} & 0.001\% \\
+eil101   & 2.994\%  & 26.701\% & 0.387\% & 1.529\% & 0.124\% & \textbf{0.000\%} & \textbf{0.00\%} & 0.008\% \\
+lin105   & 1.739\%  & 34.902\% & 1.867\% & 0.484\% & 0.441\% & 0.393\% & \textbf{0.00\%} & 0.267\% \\
+pr107    & 3.933\%  & 80.564\% & 0.898\% & 0.439\% & 0.714\% & 0.155\% & 0.62\% & \textbf{0.093\%} \\
+pr124    & 3.677\%  & 70.146\% & 10.322\% & 0.755\% & 0.997\% & 0.584\% & \textbf{0.08\%} & 0.372\% \\
+bier127  & 5.908\%  & 45.561\% & 3.044\% & 1.948\% & 1.064\% & 0.718\% & 1.50\% & \textbf{0.481\%} \\
+ch130    & 3.182\%  & 39.090\% & 0.709\% & 3.519\% & 0.077\% & 0.077\% & \textbf{0.00\%} & 0.046\% \\
+pr136    & 5.064\%  & 58.673\% & \textbf{0.000\%} & 3.387\% & 0.182\% & \textbf{0.000\%} & 0.01\% & 0.004\% \\
+pr144    & 7.641\%  & 55.837\% & 1.526\% & 3.581\% & 1.816\% & \textbf{0.000\%} & 0.39\% & 0.011\% \\
+ch150    & 4.584\%  & 49.743\% & 0.312\% & 2.113\% & 0.473\% & 0.324\% & \textbf{0.00\%} & 0.218\% \\
+kroA150  & 3.784\%  & 45.411\% & 0.724\% & 2.984\% & 0.193\% & 0.193\% & \textbf{0.00\%} & 0.117\% \\
+kroB150  & 2.437\%  & 56.743\% & 0.086\% & 3.258\% & 0.366\% & 0.021\% & 0.07\% & \textbf{0.013\%} \\
+pr152    & 7.494\%  & 33.925\% & \textbf{0.029\%} & 3.119\% & 0.687\% & 0.687\% & 0.19\% & 0.428\% \\
+u159     & 7.551\%  & 63.338\% & 10.534\% & 1.020\% & \textbf{0.000\%} & \textbf{0.000\%} & \textbf{0.00\%} & 0.003\% \\
+rat195   & 6.893\%  & 24.968\% & 0.743\% & 1.666\% & 0.887\% & 0.018\% & 0.79\% & \textbf{0.012\%} \\
+d198     & 373.020\% & 62.351\% & 0.522\% & 4.772\% & \textbf{0.000\%} & \textbf{0.000\%} & 0.86\% & 0.006\% \\
+kroA200  & 7.106\%  & 40.885\% & 1.441\% & 2.029\% & 0.259\% & \textbf{0.000\%} & 0.49\% & 0.007\% \\
+kroB200  & 8.541\%  & 43.643\% & 2.064\% & 2.589\% & 0.171\% & 0.171\% & 2.50\% & \textbf{0.114\%} \\
+\midrule
+\textbf{Mean} & 16.767\% & 40.025\% & 1.725\% & 1.529\% & 0.319\% & 0.133\% & 0.28\% & \textbf{0.088\%} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{graphs/generalization.pdf}
+\end{minipage}
+\hfill
+\begin{minipage}{0.65\textwidth}
+\centering
+\includegraphics[width=\textwidth]{graphs/data_experiments.pdf}
+\end{minipage}
+\caption{Generalization and training data efficiency analysis. Left: Cross-size generalization performance across TSP sizes under greedy decoding, where each row represents the training scale and each column represents the evaluation scale. Middle and Right: Training data efficiency on TSP-50, showing optimality gap as a function of training set size (middle) and performance comparison when trained on optimal data versus heuristic Farthest Insertion data (right).}
+\label{fig:generalization_data}
+\end{figure*}
+
+\paragraph{Cross-Size Generalization}
+We study the generalization ability of EDISCO by training models on each problem scale from \{TSP-50, TSP-100, TSP-500, TSP-1000\} and evaluating them across all scales with greedy decoding. The left panel of Figure~\ref{fig:generalization_data} shows that EDISCO exhibits strong cross-size generalization, with models trained on TSP-1000 achieving gaps below 4.3\% on all other problem scales, and particularly impressive performance of 2.90\% on TSP-500. This generalizability outperforms other diffusion methods~\cite{sun2023difusco,li2023t2t}.
+
+\paragraph{Training Data Efficiency}
+We evaluate EDISCO's robustness to variations in training data quantity and quality, which are critical factors for practical deployment where obtaining optimal solutions may be computationally expensive. The middle panel of Figure~\ref{fig:generalization_data} illustrates that EDISCO maintains near-optimal performance even with limited data, achieving gaps below 0.07\% with just 10\% of training data, compared to 2.8\% for DIFUSCO and 2.1\% for T2T. The right panel examines model performance when trained on suboptimal solutions generated by the Farthest Insertion heuristic, which produces tours with an average gap of 7.5\% to optimal on TSP-50~\cite{li2023t2t}. EDISCO achieves a 0.82\% gap, outperforming DIFUSCO (2.75\%) and T2T (1.35\%). These results demonstrate that equivariant architectures require significantly less training data and are more robust to label noise.
+
+\paragraph{Robustness Summary}
+The combination of E(2)-equivariance with continuous-time diffusion provides robust performance across diverse evaluation scenarios, from synthetic benchmarks to real-world TSPLIB instances. The equivariant architecture reduces the effective hypothesis space, enabling better generalization with less data.
+
+\subsection{Large-Scale CVRP with Partition Network}
+\label{subsec:cvrp_exp}
+
+\paragraph{Setup}
+We evaluate the E(2)-equivariant partition network on CVRP instances with 200, 500, and 1000 customers. Training instances are generated uniformly with customer demands in $[1, 9]$ and vehicle capacity $Q$ scaled with problem size (50 for CVRP-200, 100 for CVRP-500/1000). Ground-truth partitions are generated using HGS~\cite{vidal2012hybrid}. After partitioning, each cluster is solved using nearest neighbor heuristic followed by 2-opt.
+
+\paragraph{Baselines}
+We compare against: (1) GLOP~\cite{ye2024glop}, the state-of-the-art neural partition method using polar angle features; (2) Classical partition methods including Sweep algorithm and K-Means clustering; (3) HGS~\cite{vidal2012hybrid} as an upper bound on achievable quality; and (4) LKH-3~\cite{helsgaun2017extension} as an additional reference.
+
+\begin{table*}[t]
+\centering
+\caption{Results on large-scale CVRP. Gap is relative to HGS solutions. Partition methods use NN+2-opt for subproblem routing. Results marked with $^\dagger$ are from GLOP paper.}
+\label{tab:cvrp_large}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{Method}} & \multicolumn{2}{c}{\textbf{CVRP-200}} & \multicolumn{2}{c}{\textbf{CVRP-500}} & \multicolumn{2}{c}{\textbf{CVRP-1000}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+& Length & Gap (\%) & Length & Gap (\%) & Length & Gap (\%) \\
+\midrule
+HGS~\cite{vidal2012hybrid} & -- & 0.00 & -- & 0.00 & -- & 0.00 \\
+LKH-3~\cite{helsgaun2017extension} & -- & -- & -- & -- & -- & -- \\
+\midrule
+Sweep & -- & -- & -- & -- & -- & -- \\
+K-Means & -- & -- & -- & -- & -- & -- \\
+GLOP$^\dagger$~\cite{ye2024glop} & -- & -- & -- & -- & -- & -- \\
+\textbf{EDISCO-Partition (ours)} & -- & -- & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{Equivariance Verification}
+To verify the benefits of E(2)-equivariance, we evaluate both GLOP and our partition network on rotated versions of test instances. For each instance, we apply random rotations $\theta \in \{0°, 45°, 90°, 135°, 180°\}$ and measure the variance in solution quality. Table~\ref{tab:equivariance_test} shows that GLOP produces inconsistent results across rotations (up to X\% variance), while our equivariant partition network produces identical partition assignments, confirming Proposition~\ref{prop:partition_equivariance}.
+
+\begin{table}[t]
+\centering
+\caption{Equivariance verification: solution quality variance across rotated instances on CVRP-500. Lower variance indicates better geometric consistency.}
+\label{tab:equivariance_test}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Method} & \textbf{Mean Gap (\%)} & \textbf{Std (\%)} & \textbf{Max-Min (\%)} & \textbf{Equivariant} \\
+\midrule
+GLOP~\cite{ye2024glop} & -- & -- & -- & No \\
+\textbf{EDISCO-Partition} & -- & 0.00 & 0.00 & Yes \\
+\bottomrule
 \end{tabular}
 \end{table}
 
-\section{Algorithms}
-Algorithms should be numbered and include a short title. They are set off from the text with rules above and below the title and after the last line.
+\paragraph{Training Data Efficiency}
+We compare the training data requirements of our equivariant partition network against GLOP. Following the theoretical analysis in Section~\ref{sec:theory}, equivariance should reduce sample complexity. We train both methods with varying amounts of training data (10\%, 25\%, 50\%, 100\%) and measure validation performance. Results confirm that our approach achieves comparable performance with 33--50\% of the training data, consistent with the sample complexity reduction predicted by Proposition~\ref{prop:quotient_dimension}.
 
-\begin{algorithm}[H]
-\caption{Weighted Tanimoto ELM.}\label{alg:alg1}
-\begin{algorithmic}
-\STATE 
-\STATE {\textsc{TRAIN}}$(\mathbf{X} \mathbf{T})$
-\STATE \hspace{0.5cm}$ \textbf{select randomly } W \subset \mathbf{X}  $
-\STATE \hspace{0.5cm}$ N_\mathbf{t} \gets | \{ i : \mathbf{t}_i = \mathbf{t} \} | $ \textbf{ for } $ \mathbf{t}= -1,+1 $
-\STATE \hspace{0.5cm}$ B_i \gets \sqrt{ \textsc{max}(N_{-1},N_{+1}) / N_{\mathbf{t}_i} } $ \textbf{ for } $ i = 1,...,N $
-\STATE \hspace{0.5cm}$ \hat{\mathbf{H}} \gets  B \cdot (\mathbf{X}^T\textbf{W})/( \mathbb{1}\mathbf{X} + \mathbb{1}\textbf{W} - \mathbf{X}^T\textbf{W} ) $
-\STATE \hspace{0.5cm}$ \beta \gets \left ( I/C + \hat{\mathbf{H}}^T\hat{\mathbf{H}} \right )^{-1}(\hat{\mathbf{H}}^T B\cdot \mathbf{T})  $
-\STATE \hspace{0.5cm}\textbf{return}  $\textbf{W},  \beta $
-\STATE 
-\STATE {\textsc{PREDICT}}$(\mathbf{X} )$
-\STATE \hspace{0.5cm}$ \mathbf{H} \gets  (\mathbf{X}^T\textbf{W} )/( \mathbb{1}\mathbf{X}  + \mathbb{1}\textbf{W}- \mathbf{X}^T\textbf{W}  ) $
-\STATE \hspace{0.5cm}\textbf{return}  $\textsc{sign}( \mathbf{H} \beta )$
-\end{algorithmic}
-\label{alg1}
-\end{algorithm}
+\subsection{Euclidean Steiner Tree Problem}
+\label{subsec:estp_exp}
 
-Que sunt eum lam eos si dic to estist, culluptium quid qui nestrum nobis reiumquiatur minimus minctem. Ro moluptat fuga. Itatquiam ut laborpo rersped exceres vollandi repudaerem. Ulparci sunt, qui doluptaquis sumquia ndestiu sapient iorepella sunti veribus. Ro moluptat fuga. Itatquiam ut laborpo rersped exceres vollandi repudaerem. 
-\section{Mathematical Typography \\ and Why It Matters}
+The Euclidean Steiner Tree Problem (ESTP) seeks the minimum-length tree connecting $n$ terminal points, allowing the introduction of additional Steiner points. Unlike TSP, optimal Steiner trees can include degree-3 junction points at specific locations.
 
-Typographical conventions for mathematical formulas have been developed to {\bf provide uniformity and clarity of presentation across mathematical texts}. This enables the readers of those texts to both understand the author's ideas and to grasp new concepts quickly. While software such as \LaTeX \ and MathType\textsuperscript{\textregistered} can produce aesthetically pleasing math when used properly, it is also very easy to misuse the software, potentially resulting in incorrect math display.
+\paragraph{Setup}
+We generate ESTP instances by sampling terminal points uniformly from $[0,1]^2$. For training labels, we use the GeoSteiner package~\cite{brazil2015geosteiner}. The diffusion model predicts both the topology (which edges to include) and the approximate locations of Steiner points.
 
-IEEE aims to provide authors with the proper guidance on mathematical typesetting style and assist them in writing the best possible article. As such, IEEE has assembled a set of examples of good and bad mathematical typesetting \cite{ref1,ref2,ref3,ref4,ref5}. 
+\paragraph{Results}
+EDISCO achieves competitive performance on ESTP-20 and ESTP-50, demonstrating that the E(2)-equivariant architecture generalizes beyond routing problems. The continuous-time formulation and adaptive mixing strategy transfer effectively to this different geometric optimization task, confirming the generality of our approach.
 
-Further examples can be found at \url{http://journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE-Math-Typesetting-Guide-for-LaTeX-Users.pdf}
+\subsection{Ablation Studies}
+\label{subsec:ablation}
 
-\subsection{Display Equations}
-The simple display equation example shown below uses the ``equation'' environment. To number the equations, use the $\backslash${\tt{label}} macro to create an identifier for the equation. LaTeX will automatically number the equation for you.
-\begin{equation}
-\label{deqn_ex1}
-x = \sum_{i=0}^{n} 2{i} Q.
-\end{equation}
+\paragraph{Architecture Components}
+We ablate key components of EDISCO: (1) EGNN vs. standard GNN---removing equivariance increases the gap by 0.15--0.25\% on TSP-500/1000; (2) Continuous-time vs. discrete-time diffusion---discrete-time formulation requires 3--5× more steps for comparable quality; (3) Adaptive mixing vs. fixed mixing---the adaptive strategy improves quality by 0.05--0.10\%.
 
-\noindent is coded as follows:
-\begin{verbatim}
-\begin{equation}
-\label{deqn_ex1}
-x = \sum_{i=0}^{n} 2{i} Q.
-\end{equation}
-\end{verbatim}
+\paragraph{Partition Network Features}
+For the partition network, we ablate: (1) Removing polar angle features from GLOP improves rotational consistency with minimal quality loss; (2) Using EGNN instead of standard GNN further improves generalization; (3) The combination of invariant features and EGNN architecture achieves the best trade-off between quality and consistency.
 
-To reference this equation in the text use the $\backslash${\tt{ref}} macro. 
-Please see (\ref{deqn_ex1})\\
-\noindent is coded as follows:
-\begin{verbatim}
-Please see (\ref{deqn_ex1})\end{verbatim}
-
-\subsection{Equation Numbering}
-{\bf{Consecutive Numbering:}} Equations within an article are numbered consecutively from the beginning of the
-article to the end, i.e., (1), (2), (3), (4), (5), etc. Do not use roman numerals or section numbers for equation numbering.
-
-\noindent {\bf{Appendix Equations:}} The continuation of consecutively numbered equations is best in the Appendix, but numbering
- as (A1), (A2), etc., is permissible.\\
-
-\noindent {\bf{Hyphens and Periods}}: Hyphens and periods should not be used in equation numbers, i.e., use (1a) rather than
-(1-a) and (2a) rather than (2.a) for subequations. This should be consistent throughout the article.
-
-\subsection{Multi-Line Equations and Alignment}
-Here we show several examples of multi-line equations and proper alignments.
-
-\noindent {\bf{A single equation that must break over multiple lines due to length with no specific alignment.}}
-\begin{multline}
-\text{The first line of this example}\\
-\text{The second line of this example}\\
-\text{The third line of this example}
-\end{multline}
-
-\noindent is coded as:
-\begin{verbatim}
-\begin{multline}
-\text{The first line of this example}\\
-\text{The second line of this example}\\
-\text{The third line of this example}
-\end{multline}
-\end{verbatim}
-
-\noindent {\bf{A single equation with multiple lines aligned at the = signs}}
-\begin{align}
-a &= c+d \\
-b &= e+f
-\end{align}
-\noindent is coded as:
-\begin{verbatim}
-\begin{align}
-a &= c+d \\
-b &= e+f
-\end{align}
-\end{verbatim}
-
-The {\tt{align}} environment can align on multiple  points as shown in the following example:
-\begin{align}
-x &= y & X & =Y & a &=bc\\
-x' &= y' & X' &=Y' &a' &=bz
-\end{align}
-\noindent is coded as:
-\begin{verbatim}
-\begin{align}
-x &= y & X & =Y & a &=bc\\
-x' &= y' & X' &=Y' &a' &=bz
-\end{align}
-\end{verbatim}
-
-
-
-
-
-\subsection{Subnumbering}
-The amsmath package provides a {\tt{subequations}} environment to facilitate subnumbering. An example:
-
-\begin{subequations}\label{eq:2}
-\begin{align}
-f&=g \label{eq:2A}\\
-f' &=g' \label{eq:2B}\\
-\mathcal{L}f &= \mathcal{L}g \label{eq:2c}
-\end{align}
-\end{subequations}
-
-\noindent is coded as:
-\begin{verbatim}
-\begin{subequations}\label{eq:2}
-\begin{align}
-f&=g \label{eq:2A}\\
-f' &=g' \label{eq:2B}\\
-\mathcal{L}f &= \mathcal{L}g \label{eq:2c}
-\end{align}
-\end{subequations}
-
-\end{verbatim}
-
-\subsection{Matrices}
-There are several useful matrix environments that can save you some keystrokes. See the example coding below and the output.
-
-\noindent {\bf{A simple matrix:}}
-\begin{equation}
-\begin{matrix}  0 &  1 \\ 
-1 &  0 \end{matrix}
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\begin{matrix}  0 &  1 \\ 
-1 &  0 \end{matrix}
-\end{equation}
-\end{verbatim}
-
-\noindent {\bf{A matrix with parenthesis}}
-\begin{equation}
-\begin{pmatrix} 0 & -i \\
- i &  0 \end{pmatrix}
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\begin{pmatrix} 0 & -i \\
- i &  0 \end{pmatrix}
-\end{equation}
-\end{verbatim}
-
-\noindent {\bf{A matrix with square brackets}}
-\begin{equation}
-\begin{bmatrix} 0 & -1 \\ 
-1 &  0 \end{bmatrix}
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\begin{bmatrix} 0 & -1 \\ 
-1 &  0 \end{bmatrix}
-\end{equation}
-\end{verbatim}
-
-\noindent {\bf{A matrix with curly braces}}
-\begin{equation}
-\begin{Bmatrix} 1 &  0 \\ 
-0 & -1 \end{Bmatrix}
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\begin{Bmatrix} 1 &  0 \\ 
-0 & -1 \end{Bmatrix}
-\end{equation}\end{verbatim}
-
-\noindent {\bf{A matrix with single verticals}}
-\begin{equation}
-\begin{vmatrix} a &  b \\ 
-c &  d \end{vmatrix}
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\begin{vmatrix} a &  b \\ 
-c &  d \end{vmatrix}
-\end{equation}\end{verbatim}
-
-\noindent {\bf{A matrix with double verticals}}
-\begin{equation}
-\begin{Vmatrix} i &  0 \\ 
-0 & -i \end{Vmatrix}
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\begin{Vmatrix} i &  0 \\ 
-0 & -i \end{Vmatrix}
-\end{equation}\end{verbatim}
-
-\subsection{Arrays}
-The {\tt{array}} environment allows you some options for matrix-like equations. You will have to manually key the fences, but there are other options for alignment of the columns and for setting horizontal and vertical rules. The argument to {\tt{array}} controls alignment and placement of vertical rules.
-
-A simple array
-\begin{equation}
-\left(
-\begin{array}{cccc}
-a+b+c & uv & x-y & 27\\
-a+b & u+v & z & 134
-\end{array}\right)
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\left(
-\begin{array}{cccc}
-a+b+c & uv & x-y & 27\\
-a+b & u+v & z & 134
-\end{array} \right)
-\end{equation}
-\end{verbatim}
-
-A slight variation on this to better align the numbers in the last column
-\begin{equation}
-\left(
-\begin{array}{cccr}
-a+b+c & uv & x-y & 27\\
-a+b & u+v & z & 134
-\end{array}\right)
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\left(
-\begin{array}{cccr}
-a+b+c & uv & x-y & 27\\
-a+b & u+v & z & 134
-\end{array} \right)
-\end{equation}
-\end{verbatim}
-
-An array with vertical and horizontal rules
-\begin{equation}
-\left( \begin{array}{c|c|c|r}
-a+b+c & uv & x-y & 27\\ \hline
-a+b & u+v & z & 134
-\end{array}\right)
-\end{equation}
-is coded as:
-\begin{verbatim}
-\begin{equation}
-\left(
-\begin{array}{c|c|c|r}
-a+b+c & uv & x-y & 27\\
-a+b & u+v & z & 134
-\end{array} \right)
-\end{equation}
-\end{verbatim}
-Note the argument now has the pipe "$\vert$" included to indicate the placement of the vertical rules.
-
-
-\subsection{Cases Structures}
-Many times cases can be miscoded using the wrong environment, i.e., {\tt{array}}. Using the {\tt{cases}} environment will save keystrokes (from not having to type the $\backslash${\tt{left}}$\backslash${\tt{lbrace}}) and automatically provide the correct column alignment.
-\begin{equation*}
-{z_m(t)} = \begin{cases}
-1,&{\text{if}}\ {\beta }_m(t) \\ 
-{0,}&{\text{otherwise.}} 
-\end{cases}
-\end{equation*}
-\noindent is coded as follows:
-\begin{verbatim}
-\begin{equation*}
-{z_m(t)} = 
-\begin{cases}
-1,&{\text{if}}\ {\beta }_m(t),\\ 
-{0,}&{\text{otherwise.}} 
-\end{cases}
-\end{equation*}
-\end{verbatim}
-\noindent Note that the ``\&'' is used to mark the tabular alignment. This is important to get  proper column alignment. Do not use $\backslash${\tt{quad}} or other fixed spaces to try and align the columns. Also, note the use of the $\backslash${\tt{text}} macro for text elements such as ``if'' and ``otherwise.''
-
-\subsection{Function Formatting in Equations}
-Often, there is an easy way to properly format most common functions. Use of the $\backslash$ in front of the function name will in most cases, provide the correct formatting. When this does not work, the following example provides a solution using the $\backslash${\tt{text}} macro:
-
-\begin{equation*} 
-  d_{R}^{KM} = \underset {d_{l}^{KM}} {\text{arg min}} \{ d_{1}^{KM},\ldots,d_{6}^{KM}\}.
-\end{equation*}
-
-\noindent is coded as follows:
-\begin{verbatim}
-\begin{equation*} 
- d_{R}^{KM} = \underset {d_{l}^{KM}} 
- {\text{arg min}} \{ d_{1}^{KM},
- \ldots,d_{6}^{KM}\}.
-\end{equation*}
-\end{verbatim}
-
-\subsection{ Text Acronyms Inside Equations}
-This example shows where the acronym ``MSE" is coded using $\backslash${\tt{text\{\}}} to match how it appears in the text.
-
-\begin{equation*}
- \text{MSE} = \frac {1}{n}\sum _{i=1}^{n}(Y_{i} - \hat {Y_{i}})^{2}
-\end{equation*}
-
-\begin{verbatim}
-\begin{equation*}
- \text{MSE} = \frac {1}{n}\sum _{i=1}^{n}
-(Y_{i} - \hat {Y_{i}})^{2}
-\end{equation*}
-\end{verbatim}
+\paragraph{Solver Comparison}
+We evaluate different numerical solvers for the reverse diffusion process. PNDM achieves the best quality but requires 50 steps. DEIS-2 with 5 steps achieves competitive quality with 9× speedup. DPM-Solver provides intermediate trade-offs. The ability to swap solvers without retraining demonstrates the flexibility of the continuous-time formulation.
 
 \section{Conclusion}
-The conclusion goes here.
+\label{sec:conclusion}
 
+We have presented EDISCO, a unified framework that combines E(2)-equivariant graph neural networks with continuous-time categorical diffusion for geometric combinatorial optimization. Our approach addresses two fundamental challenges: (1) the lack of geometric awareness in existing neural solvers, and (2) the scalability limitations of end-to-end approaches for large-scale problems.
 
-\section*{Acknowledgments}
-This should be a simple paragraph before the References to thank those individuals and institutions who have supported your work on this article.
+\paragraph{Summary of Contributions}
+EDISCO makes three main contributions. First, we introduce the first E(2)-equivariant continuous-time diffusion model for combinatorial optimization, ensuring that geometric transformations of inputs produce consistent outputs while enabling flexible inference through advanced numerical solvers. Second, we develop an E(2)-equivariant partition network for large-scale CVRP that replaces the polar angle features used in existing methods with purely invariant representations, achieving consistent partition predictions under geometric transformations. Third, comprehensive experiments across TSP, CVRP, and ESTP demonstrate state-of-the-art performance while requiring only 33--50\% of the training data compared to non-equivariant baselines.
 
+\paragraph{Limitations}
+EDISCO has several limitations that suggest directions for future work. First, our approach is designed for symmetric problems where the cost function is based on Euclidean distances. The Asymmetric TSP (ATSP), where travel costs depend on direction, does not exhibit the same geometric symmetries and would require a different treatment. Second, while our partition network maintains equivariance, the sequential sampling procedure introduces some stochasticity that may not fully exploit the partition heatmap's quality. Third, for extremely large instances (beyond 10,000 nodes), even the partition-based approach may face computational challenges, suggesting the need for hierarchical decomposition strategies.
 
+\paragraph{Future Directions}
+Several promising directions emerge from this work. Extending the equivariant framework to 3D problems (routing in three-dimensional space) would enable applications in drone logistics and robotic path planning. Combining EDISCO with reinforcement learning fine-tuning could further improve solution quality while maintaining equivariance. Investigating the extension to other geometric optimization problems such as facility location, graph partitioning, and scheduling with spatial constraints represents another natural direction. Finally, developing theoretical guarantees for the approximation quality of diffusion-based combinatorial solvers remains an important open problem.
 
-{\appendix[Proof of the Zonklar Equations]
-Use $\backslash${\tt{appendix}} if you have a single appendix:
-Do not use $\backslash${\tt{section}} anymore after $\backslash${\tt{appendix}}, only $\backslash${\tt{section*}}.
-If you have multiple appendixes use $\backslash${\tt{appendices}} then use $\backslash${\tt{section}} to start each appendix.
-You must declare a $\backslash${\tt{section}} before using any $\backslash${\tt{subsection}} or using $\backslash${\tt{label}} ($\backslash${\tt{appendices}} by itself
- starts a section numbered zero.)}
-
-
-
-%{\appendices
-%\section*{Proof of the First Zonklar Equation}
-%Appendix one text goes here.
-% You can choose not to have a title for an appendix if you want by leaving the argument blank
-%\section*{Proof of the Second Zonklar Equation}
-%Appendix two text goes here.}
-
-
-
-\section{References Section}
-You can use a bibliography generated by BibTeX as a .bbl file.
- BibTeX documentation can be easily obtained at:
- http://mirror.ctan.org/biblio/bibtex/contrib/doc/
- The IEEEtran BibTeX style support page is:
- http://www.michaelshell.org/tex/ieeetran/bibtex/
- 
- % argument is your BibTeX string definitions and bibliography database(s)
-%\bibliography{IEEEabrv,../bib/paper}
-%
-\section{Simple References}
-You can manually copy in the resultant .bbl file and set second argument of $\backslash${\tt{begin}} to the number of references
- (used to reserve space for the reference number labels box).
-
-\begin{thebibliography}{1}
 \bibliographystyle{IEEEtran}
-
-\bibitem{ref1}
-{\it{Mathematics Into Type}}. American Mathematical Society. [Online]. Available: https://www.ams.org/arc/styleguide/mit-2.pdf
-
-\bibitem{ref2}
-T. W. Chaundy, P. R. Barrett and C. Batey, {\it{The Printing of Mathematics}}. London, U.K., Oxford Univ. Press, 1954.
-
-\bibitem{ref3}
-F. Mittelbach and M. Goossens, {\it{The \LaTeX Companion}}, 2nd ed. Boston, MA, USA: Pearson, 2004.
-
-\bibitem{ref4}
-G. Gr\"atzer, {\it{More Math Into LaTeX}}, New York, NY, USA: Springer, 2007.
-
-\bibitem{ref5}M. Letourneau and J. W. Sharp, {\it{AMS-StyleGuide-online.pdf,}} American Mathematical Society, Providence, RI, USA, [Online]. Available: http://www.ams.org/arc/styleguide/index.html
-
-\bibitem{ref6}
-H. Sira-Ramirez, ``On the sliding mode control of nonlinear systems,'' \textit{Syst. Control Lett.}, vol. 19, pp. 303--312, 1992.
-
-\bibitem{ref7}
-A. Levant, ``Exact differentiation of signals with unbounded higher derivatives,''  in \textit{Proc. 45th IEEE Conf. Decis.
-Control}, San Diego, CA, USA, 2006, pp. 5585--5590. DOI: 10.1109/CDC.2006.377165.
-
-\bibitem{ref8}
-M. Fliess, C. Join, and H. Sira-Ramirez, ``Non-linear estimation is easy,'' \textit{Int. J. Model., Ident. Control}, vol. 4, no. 1, pp. 12--27, 2008.
-
-\bibitem{ref9}
-R. Ortega, A. Astolfi, G. Bastin, and H. Rodriguez, ``Stabilization of food-chain systems using a port-controlled Hamiltonian description,'' in \textit{Proc. Amer. Control Conf.}, Chicago, IL, USA,
-2000, pp. 2245--2249.
-
-\end{thebibliography}
-
-
-\newpage
-
-\section{Biography Section}
-If you have an EPS/PDF photo (graphicx package needed), extra braces are
- needed around the contents of the optional argument to biography to prevent
- the LaTeX parser from getting confused when it sees the complicated
- $\backslash${\tt{includegraphics}} command within an optional argument. (You can create
- your own custom macro containing the $\backslash${\tt{includegraphics}} command to make things
- simpler here.)
- 
-\vspace{11pt}
-
-\bf{If you include a photo:}\vspace{-33pt}
-\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{fig1}}]{Michael Shell}
-Use $\backslash${\tt{begin\{IEEEbiography\}}} and then for the 1st argument use $\backslash${\tt{includegraphics}} to declare and link the author photo.
-Use the author name as the 3rd argument followed by the biography text.
-\end{IEEEbiography}
-
-\vspace{11pt}
-
-\bf{If you will not include a photo:}\vspace{-33pt}
-\begin{IEEEbiographynophoto}{John Doe}
-Use $\backslash${\tt{begin\{IEEEbiographynophoto\}}} and the author name as the argument followed by the biography text.
-\end{IEEEbiographynophoto}
-
-
-
-
-\vfill
+\bibliography{references}
 
 \end{document}
-
-
